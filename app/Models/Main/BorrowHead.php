@@ -58,6 +58,6 @@ class BorrowHead extends Model
         return $this->hasMany(BorrowInfo::class, 'borrow_head_id');
     }
     public function updateSerialStatus() {
-        $statusMappings = [8 => 1];
+        $statusMappings = [8 => 1, 9 => 2, 10 => 1, 11 => 3, 12 => 6, 13 => 1, 14 => 1];
     }
 }
