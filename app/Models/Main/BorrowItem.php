@@ -30,9 +30,6 @@ class BorrowItem extends Model
         });
         static::saved(function($borrowItem) {
             $borrowItem->borrowStoreQuantity();
-            foreach($borrowItem->serials as $serial) {
-                $serial->update(['status_id' => 3]);
-            }
         });
         static::deleted(function($borrowItem) {
             $borrowItem->reverseStoreQuantity();

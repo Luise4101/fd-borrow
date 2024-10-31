@@ -21,13 +21,14 @@ class BorrowHead extends Model
 {
     use HasFactory;
     protected $table = 'borrow_heads';
-    protected $casts = ['attachment'=>'array', 'proof_payment'=>'array', 'status_id'=>BorrowStatus::class];
+    protected $casts = ['attachment'=>'array', 'proof_payment'=>'array'];
     protected $fillable = ['borrower_id', 'borrower_tel', 'borrower_lineid', 'status_id', 'qsamnak', 'qsection', 'qkong', 'qhead',
         'chead', 'approved_at', 'pickup_at', 'return_schedule', 'return_at', 'activity_name', 'q_attendee', 'q_staff',
         'activity_place', 'attachment', 'price_borrow_all', 'price_fine', 'proof_payment', 'updated_by', 'note'
     ];
     protected static function booted() {
         static::saving(function($borrowHead) {
+            $borrowHead->updateSerialStatus();
         });
         static::deleting(function($borrowHead) {
             foreach($borrowHead->borrowitems as $borrowItem) {
@@ -59,5 +60,12 @@ class BorrowHead extends Model
     }
     public function updateSerialStatus() {
         $statusMappings = [8 => 1, 9 => 2, 10 => 1, 11 => 3, 12 => 6, 13 => 1, 14 => 1];
+        if(isset($statusMappings[$this->status_id])) {
+            foreach($this->borrowitems as $borrowItem) {
+                $borrowItem->serials->each(fn($serial) =>
+                    $serial->update(['status_id' => $statusMappings[$this->status_id]])
+                );
+            }
+        }
     }
 }

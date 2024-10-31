@@ -100,7 +100,7 @@ class BorrowManageResource extends Resource
                 ->toggleable()
                 ->searchable()
                 ->sortable(),
-            TextColumn::make('status_id')
+            TextColumn::make('status.name')
                 ->label(__('สถานะการยืม'))
                 ->badge()
                 ->toggleable()

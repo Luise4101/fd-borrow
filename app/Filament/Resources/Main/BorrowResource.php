@@ -95,7 +95,7 @@ class BorrowResource extends Resource
                 ->toggleable()
                 ->searchable()
                 ->sortable(),
-            TextColumn::make('status_id')
+            TextColumn::make('status.name')
                 ->label(__('สถานะการยืม'))
                 ->badge()
                 ->toggleable()
@@ -226,7 +226,7 @@ class BorrowResource extends Resource
                 ->hiddenLabel()
                 ->inline()
                 ->options(BorrowStatus::class)
-                ->default('8')
+                ->default(8)
                 ->required()
                 ->columnSpan(5),
             TextInput::make('activity_name')
