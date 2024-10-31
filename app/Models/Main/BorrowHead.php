@@ -2,10 +2,8 @@
 
 namespace App\Models\Main;
 
-use Exception;
 use App\Models\User;
 use App\Models\Asset\Kong;
-use App\Enums\BorrowStatus;
 use App\Models\Asset\Samnak;
 use App\Models\Asset\Status;
 use App\Models\Asset\Section;

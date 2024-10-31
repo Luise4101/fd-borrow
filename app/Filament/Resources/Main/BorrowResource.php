@@ -98,6 +98,28 @@ class BorrowResource extends Resource
             TextColumn::make('status.name')
                 ->label(__('สถานะการยืม'))
                 ->badge()
+                ->color(function(string $state): string {
+                    return match($state) {
+                        'ขอใหม่' => 'info',
+                        'หน.กองอนุมัติ' => 'warning',
+                        'หน.กองไม่อนุมัติ' => 'danger',
+                        'ส่งมอบของ' => 'warning',
+                        'รับของคืน' => 'success',
+                        'จบงาน' => 'success',
+                        'ยกเลิก' => 'danger'
+                    };
+                })
+                ->icon(function(string $state): string {
+                    return match($state) {
+                        'ขอใหม่' => 'heroicon-m-sparkles',
+                        'หน.กองอนุมัติ' => 'heroicon-m-check-badge',
+                        'หน.กองไม่อนุมัติ' => 'heroicon-m-x-circle',
+                        'ส่งมอบของ' => 'heroicon-m-truck',
+                        'รับของคืน' => 'heroicon-m-arrow-path',
+                        'จบงาน' => 'heroicon-m-shield-check',
+                        'ยกเลิก' => 'heroicon-m-x-circle'
+                    };
+                })
                 ->toggleable()
                 ->searchable()
                 ->sortable(),
@@ -695,4 +717,5 @@ class BorrowResource extends Resource
         }
         $set('q_all_use', number_format($quantityUseAll));
     }
+
 }
