@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Main\BorrowResource\Pages;
 
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Resources\Main\BorrowResource;
@@ -17,6 +18,7 @@ class CreateBorrow extends CreateRecord
     }
     protected function mutateFormDataBeforeCreate(array $data): array {
         foreach($data as $key=>$val){ if(is_string($val)){$data[$key] = trim($val);} }
+        $data['updated_by'] = Filament::auth()->id();
         return $data;
     }
 }

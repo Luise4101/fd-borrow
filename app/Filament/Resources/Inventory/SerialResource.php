@@ -84,6 +84,11 @@ class SerialResource extends Resource
             ->columns([
                 TextColumn::make('id')
                     ->label(__('ID'))
+                    ->toggleable(isToggledHiddenByDefault:true)
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('name')
+                    ->label(__('หมายเลข'))
                     ->toggleable()
                     ->searchable()
                     ->sortable(),
@@ -106,14 +111,9 @@ class SerialResource extends Resource
                             'ชำรุด' => 'danger',
                             'ส่งซ่อม' => 'primary',
                             'ถึงกำหนดคืน' => 'warning',
-                            'คืนล่าช้า' => 'danger'
+                            'เลยกำหนดคืน' => 'danger'
                         };
                     }),
-                TextColumn::make('name')
-                    ->label(__('หมายเลข'))
-                    ->toggleable()
-                    ->searchable()
-                    ->sortable(),
                 TextColumn::make('serial_number')
                     ->label(__('รหัส Serial'))
                     ->toggleable()

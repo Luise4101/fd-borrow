@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Main;
 
+use Closure;
 use App\Models\User;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -22,7 +23,9 @@ use App\Models\Inventory\Product;
 use Awcodes\TableRepeater\Header;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Split;
 use Illuminate\Support\Facades\Http;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -63,6 +66,7 @@ class BorrowResource extends Resource
         return $form->schema([
             static::getBorrowheadFormSchema(),
             Group::make()->schema([
+                static::getBorrowdetailSchema(),
                 static::getBorrowitemsRepeater(),
                 static::getBorrowinfosRepeater(),
                 FilamentSection::make()->schema([Textarea::make('note')->label(__('รายละเอียดอื่น ๆ'))->maxLength(500)->autosize()])
@@ -249,6 +253,7 @@ class BorrowResource extends Resource
                 ->inline()
                 ->options(BorrowStatus::class)
                 ->default(8)
+                ->disabled()
                 ->required()
                 ->columnSpan(5),
             TextInput::make('activity_name')
@@ -412,7 +417,7 @@ class BorrowResource extends Resource
                 ->columnSpan(2),
             DateTimePicker::make('pickup_at')
                 ->hiddenLabel()
-                ->prefix('วันที่รับของ')
+                ->prefix('วันที่รับอุปกรณ์')
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
@@ -434,7 +439,7 @@ class BorrowResource extends Resource
                 ->columnSpan(2),
             DateTimePicker::make('return_at')
                 ->hiddenLabel()
-                ->prefix('วันที่คืนของ')
+                ->prefix('วันที่คืนอุปกรณ์')
                 ->visibleOn('edit')
                 ->seconds(false)
                 ->native(false)
@@ -444,6 +449,40 @@ class BorrowResource extends Resource
                 ->disabled()
                 ->columnSpan(2),
         ])->columns(6)->columnSpan(4)->compact();
+    }
+
+    public static function getBorrowdetailSchema() {
+        return FilamentSection::make(new HtmlString('ราคาอุปกรณ์ <span style="color:red;font-size:0.9rem;">(กรณีทำชำรุดหรือสูญหาย)</span>'))->schema([
+            Placeholder::make('price_products')
+                ->hiddenLabel()
+                ->content(new HtmlString('
+                    <style>
+                        .pr-4 {padding-right: 1.5rem;}
+                        .text-red-500 {color: red;}
+                        .bg-lime-100 {background-color: #ecfccb;}
+                        .grid-col-2 {grid-template-columns: repeat(2, minmax(0, 1fr));}
+                    </style>
+                    <div class="grid grid-col-2 gap-3">
+                        <table>
+                            <tr><td>1.</td><td>วิทยุสื่อสาร</td><td class="text-right text-red-500 font-semibold pr-4">2,500</td><td class="text-center">บาท</td></tr>
+                            <tr><td>2.</td><td>แบตเตอรี่วิทยุสื่อสาร</td><td class="text-right text-red-500 font-semibold pr-4">550</td><td class="text-center">บาท</td></tr>
+                            <tr><td>3.</td><td>ชุดหูฟังวิทยุสื่อสาร</td><td class="text-right text-red-500 font-semibold pr-4">200</td><td class="text-center">บาท</td></tr>
+                            <tr><td>4.</td><td>ชุดแท่นชาร์จวิทยุสื่อสาร</td><td class="text-right text-red-500 font-semibold pr-4">550</td><td class="text-center">บาท</td></tr>
+                            <tr><td>5.</td><td>เสาสัญญาณวิทยุสื่อสาร</td><td class="text-right text-red-500 font-semibold pr-4">250</td><td class="text-center">บาท</td></tr>
+                            <tr><td>6.</td><td>กระจกหน้าจอวิทยุสื่อสาร</td><td class="text-right text-red-500 font-semibold pr-4">200</td><td class="text-center">บาท</td></tr>
+                            <tr><td>7.</td><td>ซองหนัง/คลิปหลังวิทยุสื่อสาร</td><td class="text-right text-red-500 font-semibold pr-4">100</td><td class="text-center">บาท</td></tr>
+                        </table>
+                        <table>
+                            <tr><td>8.</td><td>ยางข้างปุ่มเพิ่มลดเสียง</td><td class="text-right text-red-500 font-semibold pr-4">300</td><td class="text-center">บาท</td></tr>
+                            <tr><td>9.</td><td>เคี้ยววิทยุสื่อสารหลุด/หัก</td><td class="text-right text-red-500 font-semibold pr-4">200</td><td class="text-center">บาท</td></tr>
+                            <tr><td>10.</td><td>กล่องพลาสติกใหญ่</td><td class="text-right text-red-500 font-semibold pr-4">350</td><td class="text-center">บาท</td></tr>
+                            <tr><td>11.</td><td>กล่องพลาสติกเล็ก</td><td class="text-right text-red-500 font-semibold pr-4">200</td><td class="text-center">บาท</td></tr>
+                            <tr><td>12.</td><td>กล่องกระดาษใส่แท่นชาร์จ</td><td class="text-right text-red-500 font-semibold pr-4">10</td><td class="text-center">บาท</td></tr>
+                            <tr><td>13.</td><td>กล่องกระดาษใส่อุปกรณ์</td><td class="text-right text-red-500 font-semibold pr-4">55</td><td class="text-center">บาท</td></tr>
+                        </table>
+                    </div>
+                '))
+        ])->collapsed()->compact()->extraAttributes(['class' => 'bg-lime-100']);
     }
 
     public static function getBorrowitemsRepeater() {
@@ -472,9 +511,16 @@ class BorrowResource extends Resource
                             <li class="guide-li">ติดต่อบริการยืม-คืนได้ที่ ศูนย์คอมพิวเตอร์ ตึกไอทีใหม่(ข้างโรงไฟฟ้าย่อย) เบอร์ภายใน 11816</li>
                         </ol>
                     ')),
-                Repeater::make('borrowitems')
+                TableRepeater::make('borrowitems')
                     ->relationship()
                     ->hiddenLabel()
+                    ->headers([
+                        Header::make('รายละเอียดอุปกรณ์')->width('210px'),
+                        Header::make('จ.ขอ')->align(Alignment::Center)->width('80px'),
+                        Header::make('จ.ให้ยืม')->align(Alignment::Center)->width('80px'),
+                        Header::make('จ.คืน')->align(Alignment::Center)->width('80px'),
+                        Header::make('เลขทะเบียน ว.')->align(Alignment::Center)
+                    ])
                     ->schema([
                         Select::make('product_id')
                             ->hiddenLabel()
@@ -506,23 +552,9 @@ class BorrowResource extends Resource
                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                             ->required()
                             ->columnSpan(1),
-                        TextInput::make('price_product')
-                            ->hiddenLabel()
-                            ->prefix(__('ราคาอุปกรณ์'))
-                            ->dehydrated()
-                            ->readonly()
-                            ->numeric()
-                            ->columnSpan(1),
-                        TextInput::make('price_borrow')
-                            ->hiddenLabel()
-                            ->prefix(__('ค่ามัดจำ'))
-                            ->dehydrated()
-                            ->readonly()
-                            ->numeric()
-                            ->columnSpan(1),
+                        Hidden::make('price_product'),
+                        Hidden::make('price_borrow'),
                         TextInput::make('q_request')
-                            ->hiddenLabel()
-                            ->prefix(__('จำนวนที่ขอ'))
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(1000)
@@ -550,16 +582,12 @@ class BorrowResource extends Resource
                             ->required()
                             ->columnSpan(1),
                         TextInput::make('q_lend')
-                            ->hiddenLabel()
-                            ->prefix(__('จำนวนที่ยืม'))
                             ->numeric()
                             ->default(0)
                             ->disabled()
                             ->required()
                             ->columnSpan(1),
                         TextInput::make('q_return')
-                            ->hiddenLabel()
-                            ->prefix(__('จำนวนที่คืน'))
                             ->numeric()
                             ->default(0)
                             ->disabled()
@@ -568,15 +596,12 @@ class BorrowResource extends Resource
                             ->hiddenLabel()
                             ->dehydrated(),
                         Select::make('serials')
-                            ->hiddenLabel()
-                            ->placeholder(__('หมายเลขวิทยุสื่อสาร'))
                             ->relationship('serials', 'name')
                             ->multiple()
                             ->reactive()
                             ->disabled()
                             ->columnSpan(2)
-                    ])->columns(4)
-                    ->extraItemActions([
+                    ])->extraItemActions([
                         Action::make('openProduct')
                             ->tooltip('Open product')
                             ->icon('heroicon-m-arrow-top-right-on-square')
@@ -589,14 +614,18 @@ class BorrowResource extends Resource
                             ->hidden(fn(array $arguments, Repeater $component): bool =>
                                 array_key_exists('item', $arguments) && blank($component->getRawItemState($arguments['item'])['product_id'])
                             )
-                    ])
+                    ])->emptyLabel('กรุณาเพิ่มอุปกรณ์ที่จะขอยืม')
                     ->addActionLabel('เพิ่มการยืมอุปกรณ์')
                     ->orderColumn('sort')
                     ->defaultItems(1)
+                    ->streamlined()
                     ->collapsible()
                     ->required()
                     ->live(onBlur: true)
                     ->afterStateUpdated(function (Get $get, Set $set) {
+                        self::updateTotalCost($get, $set);
+                    })
+                    ->afterStateHydrated(function (Get $get, Set $set) {
                         self::updateTotalCost($get, $set);
                     })
             ])->compact()->collapsible()
