@@ -18,6 +18,7 @@ use Filament\Facades\Filament;
 use App\Models\Inventory\Store;
 use App\Models\Main\BorrowHead;
 use App\Models\Inventory\Serial;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use App\Models\Inventory\Product;
 use Awcodes\TableRepeater\Header;
@@ -25,18 +26,20 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Split;
 use Illuminate\Support\Facades\Http;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\FontWeight;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\Grid;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\Split;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Actions\DeleteAction;
@@ -44,13 +47,18 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Forms\Components\Placeholder;
 use Filament\Tables\Enums\ActionsPosition;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Infolists\Components\RepeatableEntry;
 use Awcodes\TableRepeater\Components\TableRepeater;
 use App\Filament\Resources\Inventory\ProductResource;
-use Filament\Forms\Components\Section as FilamentSection;
+use Filament\Forms\Components\Section as FormSection;
+use Filament\Infolists\Components\Group as InfolistGroup;
+use Filament\Infolists\Components\Section as InfolistSection;
 use App\Filament\Resources\Main\BorrowResource\Pages\EditBorrow;
+use App\Filament\Resources\Main\BorrowResource\Pages\ViewBorrow;
 use App\Filament\Resources\Main\BorrowResource\Pages\ListBorrows;
 use App\Filament\Resources\Main\BorrowResource\Pages\CreateBorrow;
 
@@ -69,10 +77,10 @@ class BorrowResource extends Resource
                 static::getBorrowdetailSchema(),
                 static::getBorrowitemsRepeater(),
                 static::getBorrowinfosRepeater(),
-                FilamentSection::make()->schema([Textarea::make('note')->label(__('รายละเอียดอื่น ๆ'))->maxLength(500)->autosize()])
+                FormSection::make()->schema([Textarea::make('note')->label(__('รายละเอียดอื่น ๆ'))->maxLength(500)->autosize()])
             ])->columnSpan(['md' => 4, 'lg' => 3]),
             Group::make()->schema([
-                FilamentSection::make()->schema([
+                FormSection::make()->schema([
                     Placeholder::make('created_at')
                         ->label('สร้างใบงาน')
                         ->inlineLabel()
@@ -197,16 +205,23 @@ class BorrowResource extends Resource
                 ->relationship('status','name')
                 ->native(false)
         ])->actions([
-            ViewAction::make(),
-            EditAction::make()->openUrlInNewTab(),
+            ViewAction::make()
+                ->openUrlInNewTab()
+                // ->visible(fn(BorrowHead $record) => (int)$record->borrower_id !== Filament::auth()->id())
+                ,
+            EditAction::make()
+                ->openUrlInNewTab()
+                ->visible(fn($record) => (int)$record->borrower_id === Filament::auth()->id()),
             DeleteAction::make()
-        ], position:ActionsPosition::BeforeCells)->defaultSort('id', 'desc')
-        ->bulkActions([DeleteBulkAction::make()]);
+                ->hidden(fn($record) => in_array($record->status_id, [11, 12]))
+                ->visible(fn($record) => (int)$record->borrower_id === Filament::auth()->id())
+        ], position:ActionsPosition::BeforeCells)->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array {
         return [
             'index' => ListBorrows::route('/'),
+            'view' => ViewBorrow::route('/{record}'),
             'create' => CreateBorrow::route('/create'),
             'edit' => EditBorrow::route('/{record}/edit')
         ];
@@ -241,7 +256,7 @@ class BorrowResource extends Resource
         $approve_qhead = $dataApprove['HeadLogin'];
         $approve_chead = $dataApprove['HeadFullName'];
         $approve_mail = $dataApprove['HeadEmail'];
-        return FilamentSection::make()->schema([
+        return FormSection::make()->schema([
             TextInput::make('id')
                 ->hiddenLabel()
                 ->prefix(__('BID'))
@@ -446,19 +461,19 @@ class BorrowResource extends Resource
                 ->firstDayOfWeek(7)
                 ->minutesStep(15)
                 ->displayFormat('j F Y H:i น.')
-                ->disabled()
+                // ->disabled()
                 ->columnSpan(2),
         ])->columns(6)->columnSpan(4)->compact();
     }
 
     public static function getBorrowdetailSchema() {
-        return FilamentSection::make(new HtmlString('ราคาอุปกรณ์ <span style="color:red;font-size:0.9rem;">(กรณีทำชำรุดหรือสูญหาย)</span>'))->schema([
+        return FormSection::make(new HtmlString('ราคาอุปกรณ์ <span style="color:red;font-size:0.9rem;">(กรณีทำชำรุดหรือสูญหาย)</span>'))->schema([
             Placeholder::make('price_products')
                 ->hiddenLabel()
                 ->content(new HtmlString('
                     <style>
-                        .pr-4 {padding-right: 1.5rem;}
                         .text-red-500 {color: red;}
+                        .pr-4 {padding-right: 1.5rem;}
                         .bg-lime-100 {background-color: #ecfccb;}
                         .grid-col-2 {grid-template-columns: repeat(2, minmax(0, 1fr));}
                     </style>
@@ -486,7 +501,7 @@ class BorrowResource extends Resource
     }
 
     public static function getBorrowitemsRepeater() {
-        return FilamentSection::make('ข้อปฏิบัติในการ ยืม-คืน อุปกรณ์วิทยุสื่อสาร')->headerActions([
+        return FormSection::make('ข้อปฏิบัติในการ ยืม-คืน อุปกรณ์วิทยุสื่อสาร')->headerActions([
                 Action::make('reset')
                     ->modalHeading('ลบรายการยืมทั้งหมดจากฟอร์มนี้')
                     ->requiresConfirmation()
@@ -587,10 +602,10 @@ class BorrowResource extends Resource
                             ->disabled()
                             ->required()
                             ->columnSpan(1),
-                        TextInput::make('q_return')
+                        TextInput::make('q_all_return')
                             ->numeric()
                             ->default(0)
-                            ->disabled()
+                            // ->disabled()
                             ->columnSpan(1),
                         Hidden::make('total_price_borrow')
                             ->hiddenLabel()
@@ -633,7 +648,7 @@ class BorrowResource extends Resource
     }
 
     public static function getBorrowinfosRepeater() {
-        return FilamentSection::make('ข้อมูลวัตถุประสงค์การใช้งาน')->schema([
+        return FormSection::make('ข้อมูลวัตถุประสงค์การใช้งาน')->schema([
             TextInput::make('q_attendee')
                 ->prefix('จำนวนผู้ร่วมงาน')
                 ->placeholder(0)
@@ -684,7 +699,7 @@ class BorrowResource extends Resource
     }
 
     public static function getBorrowasideFormSchema() {
-        return FilamentSection::make()->schema([
+        return FormSection::make()->schema([
             TextInput::make('price_borrow_all')
                 ->hiddenLabel()
                 ->prefix('รวมค่ามัดจำ')
@@ -747,4 +762,126 @@ class BorrowResource extends Resource
         $set('q_all_use', number_format($quantityUseAll));
     }
 
+    public static function infolist(Infolist $infolist): Infolist {
+        return $infolist->schema([
+            InfolistSection::make('ข้อมูลผู้ยืม สถานะใบงาน')->schema([
+                Grid::make(3)->schema([
+                    InfolistGroup::make([
+                        TextEntry::make('borrower.fullname')
+                            ->label('ผู้ยืม')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-user')
+                            ->size(TextEntry\TextEntrySize::Medium),
+                        TextEntry::make('borrower_tel')
+                            ->label('เบอร์โทรผู้ยืม')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-phone')
+                            ->size(TextEntry\TextEntrySize::Medium),
+                        TextEntry::make('borrower_lineid')
+                            ->label('ไลน์ไอดีผู้ยืม')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-chat-bubble-oval-left')
+                            ->size(TextEntry\TextEntrySize::Medium),
+                        TextEntry::make('chead')
+                            ->label('หัวหน้ากอง')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-user')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                    ]),
+                    InfolistGroup::make([
+                        TextEntry::make('approved_at')
+                            ->date('j F Y H.i')
+                            ->label('วันที่อนุมัติ')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-calendar')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                            ->hidden(fn(?BorrowHead $record) => $record->approved_at === null),
+                        TextEntry::make('pickup_at')
+                            ->date('j F Y H.i')
+                            ->label('วันที่รับอุปกรณ์')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-calendar')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                            ->hidden(fn(?BorrowHead $record) => $record->pickup_at === null),
+                        TextEntry::make('return_schedule')
+                            ->date('j F Y H.i')
+                            ->label('กำหนดส่งคืน')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-calendar')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                            ->hidden(fn(?BorrowHead $record) => $record->return_schedule === null),
+                        TextEntry::make('return_at')
+                            ->date('j F Y H.i')
+                            ->label('วันที่คืนอุปกรณ์')
+                            ->iconColor('primary')
+                            ->icon('heroicon-s-calendar')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                            ->hidden(fn(?BorrowHead $record) => $record->return_at === null)
+                    ]),
+                    InfolistGroup::make([
+                        TextEntry::make('samnak.csamnak')
+                            ->hiddenLabel()
+                            ->size(TextEntry\TextEntrySize::Medium),
+                        TextEntry::make('kong.ckong')
+                            ->hiddenLabel()
+                            ->size(TextEntry\TextEntrySize::Medium),
+                        TextEntry::make('status.name')
+                            ->label('สถานะใบยืม')
+                            ->iconColor('primary')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                            ->icon(fn(string $state): string => match($state) {
+                                'ขอใหม่' => 'heroicon-s-sparkles',
+                                'หน.กองอนุมัติ' => 'heroicon-s-check-badge',
+                                'หน.กองไม่อนุมัติ' => 'heroicon-s-x-circle',
+                                'ส่งมอบของ' => 'heroicon-s-truck',
+                                'รับของคืน' => 'heroicon-s-arrow-path',
+                                'จบงาน' => 'heroicon-s-shield-check',
+                                'ยกเลิก' => 'heroicon-s-x-circle'
+                            })
+                    ])
+                ]),
+                Grid::make(2)->schema([
+                    TextEntry::make('activity_name')
+                        ->label('ชื่อกิจกรรม')
+                        ->size(TextEntry\TextEntrySize::Medium),
+                    TextEntry::make('activity_place')
+                        ->label('สถานที่ใช้งาน')
+                        ->size(TextEntry\TextEntrySize::Medium)
+                ])
+            ])->collapsible(),
+            InfolistSection::make(new HtmlString('<style>.bg-gray-s {background-color: #f9fafc;}</style>ข้อมูลอุปกรณ์ที่ยืม'))->schema([
+                RepeatableEntry::make('borrowitems')->hiddenLabel()->schema([
+                    TextEntry::make('product.name')
+                        ->color('primary')
+                        ->label('รายละเอียดอุปกรณ์')
+                        ->weight(FontWeight::Bold)
+                        ->size(TextEntry\TextEntrySize::Medium)
+                        ->url(function($record) {
+                            return ProductResource::getUrl('edit', ['record' => $record->product_id]);
+                        })->openUrlInNewTab(),
+                    TextEntry::make('q_request')
+                        ->hidden(fn($record) => $record->q_request === null)
+                        ->prefix('จำนวนขอ : ')
+                        ->hiddenLabel()
+                        ->numeric(),
+                    TextEntry::make('q_lend')
+                        ->hidden(fn($record) => $record->q_lend === null)
+                        ->prefix('จำนวนยืม : ')
+                        ->hiddenLabel()
+                        ->numeric(),
+                    TextEntry::make('q_all_return')
+                        ->hidden(fn($record) => $record->q_all_return === null)
+                        ->prefix('จำนวนคืน : ')
+                        ->hiddenLabel()
+                        ->numeric(),
+                    TextEntry::make('serials')
+                        ->label('เลขทะเบียน ว.')
+                        ->formatStateUsing(function($record) {
+                            return $record->serials->pluck('name')->join(', ');
+                        })
+                        ->hidden(fn ($record) => $record->serials->isEmpty())
+                ])->columnSpanFull()->grid(4)
+            ])->collapsible()->extraAttributes(['class' => 'bg-gray-s'])
+        ]);
+    }
 }

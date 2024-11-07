@@ -53,7 +53,7 @@ class AdminPanelProvider extends PanelProvider
                 'gray' => Color::Gray,
                 'danger' => Color::Rose,
                 'warning' => Color::Orange,
-                'primary' => Color::Sky
+                'primary' => 'rgb(29, 78, 216)'
             ])
             ->brandName('FdBorrow')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
