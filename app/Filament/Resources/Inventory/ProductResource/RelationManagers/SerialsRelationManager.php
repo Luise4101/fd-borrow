@@ -10,13 +10,12 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Section;
 use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Enums\ActionsPosition;
 use Filament\Resources\RelationManagers\RelationManager;
 
 class SerialsRelationManager extends RelationManager
@@ -73,9 +72,17 @@ class SerialsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault:true)
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('name')
+                    ->label(__('หมายเลข'))
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('serial_number')
+                    ->label(__('รหัส Serial'))
+                    ->toggleable(isToggledHiddenByDefault:true)
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('status.name')
                     ->label(__('สถานะ'))
-                    ->toggleable()
                     ->searchable()
                     ->sortable()
                     ->badge()
@@ -90,16 +97,14 @@ class SerialsRelationManager extends RelationManager
                             'คืนล่าช้า' => 'danger'
                         };
                     }),
-                TextColumn::make('name')
-                    ->label(__('หมายเลข'))
-                    ->toggleable()
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('serial_number')
-                    ->label(__('รหัส Serial'))
-                    ->toggleable()
-                    ->searchable()
-                    ->sortable(),
+                IconColumn::make('license')
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->falseColor('warning')
+                    ->trueColor('info')
+                    ->label('ใบอนุญาติ')
+                    ->sortable()
+                    ->boolean(),
                 TextColumn::make('created_at')
                     ->label(__('สร้างเมื่อ'))
                     ->toggleable(isToggledHiddenByDefault:true)
@@ -109,15 +114,7 @@ class SerialsRelationManager extends RelationManager
                     ->label(__('อัปเดตเมื่อ'))
                     ->toggleable(isToggledHiddenByDefault:true)
                     ->sortable()
-                    ->date('j F Y'),
-                ToggleColumn::make('license')
-                    ->label(__('ใบอนุญาติ'))
-                    ->toggleable()
-                    ->sortable()
-                    ->onIcon('heroicon-m-check')
-                    ->offIcon('heroicon-m-x-mark')
-                    ->onColor('success')
-                    ->offColor('danger')
+                    ->date('j F Y')
             ])
             ->defaultSort('name', 'desc')
             ->filters([
@@ -131,6 +128,6 @@ class SerialsRelationManager extends RelationManager
             ->actions([
                 EditAction::make(),
                 DeleteAction::make()
-            ], position: ActionsPosition::BeforeCells);
+            ]);
     }
 }

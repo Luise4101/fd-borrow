@@ -31,8 +31,8 @@ enum BorrowStatus: string implements HasColor, HasIcon, HasLabel
     public function getColor(): string | array | null {
         return match ($this) {
             self::New => 'info',
-            self::Approved, self::Delivered => 'warning',
-            self::Returned, self::Finished => 'success',
+            self::Returned, self::Delivered => 'warning',
+            self::Approved, self::Finished => 'success',
             self::Noapproved, self::Canceled => 'danger'
         };
     }

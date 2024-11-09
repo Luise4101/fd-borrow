@@ -5,20 +5,28 @@ namespace App\Filament\Resources\Inventory;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use App\Models\Inventory\Product;
 use Illuminate\Http\UploadedFile;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Section;
+use Filament\Infolists\Components\Grid;
 use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\Group;
+use Filament\Infolists\Components\Split;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Enums\ActionsPosition;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Forms\Components\Section as FormSection;
 use App\Filament\Resources\Inventory\ProductResource\Pages;
+use Filament\Infolists\Components\Section as InfolistSection;
 use App\Filament\Resources\Inventory\ProductResource\RelationManagers\SerialsRelationManager;
 
 class ProductResource extends Resource
@@ -32,7 +40,7 @@ class ProductResource extends Resource
     public static function form(Form $form): Form
     {
         return $form ->columns(3)->schema([
-            Section::make()
+            FormSection::make()
                 ->columnSpan(['lg' => 2])
                 ->columns(2)
                 ->schema([
@@ -63,7 +71,7 @@ class ProductResource extends Resource
                         ->appendFiles()
                         ->columnSpanFull()
                 ]),
-            Section::make()
+            FormSection::make()
                 ->columnSpan(['lg' => 1])
                 ->columns(1)
                 ->schema([
@@ -148,7 +156,9 @@ class ProductResource extends Resource
                     ->native(false)
             ])
             ->actions([
-                EditAction::make(), DeleteAction::make()
+                ViewAction::make()->openUrlInNewTab(),
+                EditAction::make(),
+                DeleteAction::make()
             ], position: ActionsPosition::BeforeCells)
             ->defaultPaginationPageOption(50);
     }
@@ -161,7 +171,38 @@ class ProductResource extends Resource
         return [
             'index' => Pages\ListProducts::route('/'),
             'create' => Pages\CreateProduct::route('/create'),
-            'edit' => Pages\EditProduct::route('/{record}/edit')
+            'edit' => Pages\EditProduct::route('/{record}/edit'),
+            'view' => Pages\ViewProduct::route('/{record}')
         ];
+    }
+
+    public static function infolist(Infolist $infolist): Infolist {
+        return $infolist->schema([
+            InfolistSection::make()->schema([
+                Split::make([
+                    Grid::make(2)->schema([
+                        Group::make([
+                            TextEntry::make('category.name')
+                                ->label('ประเภทอุปกรณ์'),
+                            TextEntry::make('brand.name')
+                                ->label('แบรนด์อุปกรณ์')
+                        ]),
+                        Group::make([
+                            TextEntry::make('price_product')
+                                ->label('ราคาอุปกรณ์')
+                                ->formatStateUsing(fn($record) => self::formatPrice($record->price_product)),
+                            TextEntry::make('price_borrow')
+                                ->label('ค่ามัดจำ')
+                                ->formatStateUsing(fn($record) => self::formatPrice($record->price_borrow))
+                        ])
+                    ]),
+                    ImageEntry::make('img')->hiddenLabel()->grow(false),
+                ])->from('lg')
+            ])
+        ]);
+    }
+
+    public static function formatPrice($price) {
+        return number_format($price, $price == (int)$price ? 0 : 2);
     }
 }

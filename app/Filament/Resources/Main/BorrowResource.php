@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Main;
 
-use Closure;
 use App\Models\User;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
@@ -17,7 +16,6 @@ use App\Models\Asset\Section;
 use Filament\Facades\Filament;
 use App\Models\Inventory\Store;
 use App\Models\Main\BorrowHead;
-use App\Models\Inventory\Serial;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use App\Models\Inventory\Product;
@@ -39,7 +37,6 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\Split;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Actions\DeleteAction;
@@ -50,7 +47,6 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Infolists\Components\RepeatableEntry;
 use Awcodes\TableRepeater\Components\TableRepeater;
 use App\Filament\Resources\Inventory\ProductResource;
@@ -80,15 +76,15 @@ class BorrowResource extends Resource
                 FormSection::make()->schema([Textarea::make('note')->label(__('รายละเอียดอื่น ๆ'))->maxLength(500)->autosize()])
             ])->columnSpan(['md' => 4, 'lg' => 3]),
             Group::make()->schema([
-                FormSection::make()->schema([
+                FormSection::make('ติดต่อเจ้าหน้าที่ผ่านทาง')->description('Line Id: hana-ying')->schema([
                     Placeholder::make('created_at')
                         ->label('สร้างใบงาน')
                         ->inlineLabel()
-                        ->content(fn (BorrowHead $record): ?string => $record->created_at?->diffForHumans()),
+                        ->content(fn (?BorrowHead $record): ?string => $record?->created_at?->diffForHumans()),
                     Placeholder::make('updated_at')
                         ->label('อัปเดตล่าสุด')
                         ->inlineLabel()
-                        ->content(fn (BorrowHead $record): ?string => $record->updated_at?->diffForHumans())
+                        ->content(fn (?BorrowHead $record): ?string => $record?->updated_at?->diffForHumans())
                 ])->hidden(fn (?BorrowHead $record) => $record ===null)->compact(),
                 static::getBorrowasideFormSchema()
             ])->columnSpan(['md' => 4, 'lg' => 1])
@@ -207,23 +203,22 @@ class BorrowResource extends Resource
         ])->actions([
             ViewAction::make()
                 ->openUrlInNewTab()
-                // ->visible(fn(BorrowHead $record) => (int)$record->borrower_id !== Filament::auth()->id())
-                ,
+                ->visible(fn($record) => (int)$record?->borrower_id !== Filament::auth()->id()),
             EditAction::make()
                 ->openUrlInNewTab()
-                ->visible(fn($record) => (int)$record->borrower_id === Filament::auth()->id()),
+                ->visible(fn($record) => (int)$record?->borrower_id === Filament::auth()->id()),
             DeleteAction::make()
                 ->hidden(fn($record) => in_array($record->status_id, [11, 12]))
-                ->visible(fn($record) => (int)$record->borrower_id === Filament::auth()->id())
+                ->visible(fn($record) => $record?->borrower_id == Filament::auth()->id())
         ], position:ActionsPosition::BeforeCells)->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array {
         return [
             'index' => ListBorrows::route('/'),
-            'view' => ViewBorrow::route('/{record}'),
             'create' => CreateBorrow::route('/create'),
-            'edit' => EditBorrow::route('/{record}/edit')
+            'edit' => EditBorrow::route('/{record}/edit'),
+            'view' => ViewBorrow::route('/{record}')
         ];
     }
 
@@ -256,7 +251,7 @@ class BorrowResource extends Resource
         $approve_qhead = $dataApprove['HeadLogin'];
         $approve_chead = $dataApprove['HeadFullName'];
         $approve_mail = $dataApprove['HeadEmail'];
-        return FormSection::make()->schema([
+        return FormSection::make(new HtmlString('<style>.bg-color{background-color:#d9edf6;}</style>'))->schema([
             TextInput::make('id')
                 ->hiddenLabel()
                 ->prefix(__('BID'))
@@ -461,9 +456,9 @@ class BorrowResource extends Resource
                 ->firstDayOfWeek(7)
                 ->minutesStep(15)
                 ->displayFormat('j F Y H:i น.')
-                // ->disabled()
+                ->disabled()
                 ->columnSpan(2),
-        ])->columns(6)->columnSpan(4)->compact();
+        ])->extraAttributes(['class' => 'bg-color'])->columns(6)->columnSpan(4)->compact();
     }
 
     public static function getBorrowdetailSchema() {
@@ -497,7 +492,7 @@ class BorrowResource extends Resource
                         </table>
                     </div>
                 '))
-        ])->collapsed()->compact()->extraAttributes(['class' => 'bg-lime-100']);
+        ])->collapsible()->compact()->extraAttributes(['class' => 'bg-lime-100']);
     }
 
     public static function getBorrowitemsRepeater() {
@@ -531,10 +526,10 @@ class BorrowResource extends Resource
                     ->hiddenLabel()
                     ->headers([
                         Header::make('รายละเอียดอุปกรณ์')->width('210px'),
-                        Header::make('จ.ขอ')->align(Alignment::Center)->width('80px'),
-                        Header::make('จ.ให้ยืม')->align(Alignment::Center)->width('80px'),
-                        Header::make('จ.คืน')->align(Alignment::Center)->width('80px'),
-                        Header::make('เลขทะเบียน ว.')->align(Alignment::Center)
+                        Header::make('จำนวนขอ')->align(Alignment::Center)->width('80px'),
+                        Header::make('จำนวนให้ยืม')->align(Alignment::Center)->width('80px'),
+                        Header::make('จำนวนคืน')->align(Alignment::Center)->width('80px'),
+                        Header::make('เลขทะเบียนวิทยุสื่อสาร')->align(Alignment::Center)
                     ])
                     ->schema([
                         Select::make('product_id')
@@ -605,7 +600,7 @@ class BorrowResource extends Resource
                         TextInput::make('q_all_return')
                             ->numeric()
                             ->default(0)
-                            // ->disabled()
+                            ->disabled()
                             ->columnSpan(1),
                         Hidden::make('total_price_borrow')
                             ->hiddenLabel()
@@ -624,7 +619,7 @@ class BorrowResource extends Resource
                                 $itemData = $component->getRawItemState($arguments['item']);
                                 $product = Product::find($itemData['product_id']);
                                 if(!$product) {return null;}
-                                return ProductResource::getUrl('edit', ['record' => $product]);
+                                return ProductResource::getUrl('view', ['record' => $product]);
                             }, shouldOpenInNewTab: true)
                             ->hidden(fn(array $arguments, Repeater $component): bool =>
                                 array_key_exists('item', $arguments) && blank($component->getRawItemState($arguments['item'])['product_id'])
@@ -695,7 +690,7 @@ class BorrowResource extends Resource
                 ->afterStateHydrated(function(Get $get, Set $set) {
                     self::updateQuantityUse($get, $set);
                 })
-        ])->columns(3)->compact()->collapsible();
+        ])->extraAttributes(['class' => 'bg-lime-100'])->columns(3)->compact()->collapsible();
     }
 
     public static function getBorrowasideFormSchema() {
@@ -764,14 +759,20 @@ class BorrowResource extends Resource
 
     public static function infolist(Infolist $infolist): Infolist {
         return $infolist->schema([
-            InfolistSection::make('ข้อมูลผู้ยืม สถานะใบงาน')->schema([
+            InfolistSection::make(function(?BorrowHead $record) {
+                return $record ? new HtmlString('
+                    ใบยืมที่ <strong style="color:rgb(29, 78, 216);font-size:1.2rem;">'.$record?->id.' </strong>
+                    : ข้อมูลผู้ยืม สถานะใบงาน
+                ') : 'New Borrow';
+            })->schema([
                 Grid::make(3)->schema([
                     InfolistGroup::make([
                         TextEntry::make('borrower.fullname')
                             ->label('ผู้ยืม')
+                            ->color('primary')
                             ->iconColor('primary')
                             ->icon('heroicon-s-user')
-                            ->size(TextEntry\TextEntrySize::Medium),
+                            ->size(TextEntry\TextEntrySize::Large),
                         TextEntry::make('borrower_tel')
                             ->label('เบอร์โทรผู้ยืม')
                             ->iconColor('primary')
@@ -795,28 +796,28 @@ class BorrowResource extends Resource
                             ->iconColor('primary')
                             ->icon('heroicon-s-calendar')
                             ->size(TextEntry\TextEntrySize::Medium)
-                            ->hidden(fn(?BorrowHead $record) => $record->approved_at === null),
+                            ->hidden(fn(?BorrowHead $record) => $record?->approved_at === null),
                         TextEntry::make('pickup_at')
                             ->date('j F Y H.i')
                             ->label('วันที่รับอุปกรณ์')
                             ->iconColor('primary')
                             ->icon('heroicon-s-calendar')
                             ->size(TextEntry\TextEntrySize::Medium)
-                            ->hidden(fn(?BorrowHead $record) => $record->pickup_at === null),
+                            ->hidden(fn(?BorrowHead $record) => $record?->pickup_at === null),
                         TextEntry::make('return_schedule')
                             ->date('j F Y H.i')
                             ->label('กำหนดส่งคืน')
                             ->iconColor('primary')
                             ->icon('heroicon-s-calendar')
                             ->size(TextEntry\TextEntrySize::Medium)
-                            ->hidden(fn(?BorrowHead $record) => $record->return_schedule === null),
+                            ->hidden(fn(?BorrowHead $record) => $record?->return_schedule === null),
                         TextEntry::make('return_at')
                             ->date('j F Y H.i')
                             ->label('วันที่คืนอุปกรณ์')
                             ->iconColor('primary')
                             ->icon('heroicon-s-calendar')
                             ->size(TextEntry\TextEntrySize::Medium)
-                            ->hidden(fn(?BorrowHead $record) => $record->return_at === null)
+                            ->hidden(fn(?BorrowHead $record) => $record?->return_at === null)
                     ]),
                     InfolistGroup::make([
                         TextEntry::make('samnak.csamnak')
@@ -825,6 +826,16 @@ class BorrowResource extends Resource
                         TextEntry::make('kong.ckong')
                             ->hiddenLabel()
                             ->size(TextEntry\TextEntrySize::Medium),
+                        TextEntry::make('created_at')
+                            ->hiddenLabel()
+                            ->prefix('สร้างใบงาน ')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                            ->formatStateUsing(fn($state): ?string => $state?->diffForHumans()),
+                        TextEntry::make('updated_at')
+                            ->hiddenLabel()
+                            ->prefix('อัปเดตล่าสุด ')
+                            ->size(TextEntry\TextEntrySize::Medium)
+                            ->formatStateUsing(fn($state): ?string => $state?->diffForHumans()),
                         TextEntry::make('status.name')
                             ->label('สถานะใบยืม')
                             ->iconColor('primary')
@@ -843,9 +854,13 @@ class BorrowResource extends Resource
                 Grid::make(2)->schema([
                     TextEntry::make('activity_name')
                         ->label('ชื่อกิจกรรม')
+                        ->iconColor('primary')
+                        ->icon('heroicon-s-document-text')
                         ->size(TextEntry\TextEntrySize::Medium),
                     TextEntry::make('activity_place')
                         ->label('สถานที่ใช้งาน')
+                        ->iconColor('primary')
+                        ->icon('heroicon-s-map')
                         ->size(TextEntry\TextEntrySize::Medium)
                 ])
             ])->collapsible(),
@@ -857,20 +872,20 @@ class BorrowResource extends Resource
                         ->weight(FontWeight::Bold)
                         ->size(TextEntry\TextEntrySize::Medium)
                         ->url(function($record) {
-                            return ProductResource::getUrl('edit', ['record' => $record->product_id]);
+                            return ProductResource::getUrl('view', ['record' => $record->product_id]);
                         })->openUrlInNewTab(),
                     TextEntry::make('q_request')
-                        ->hidden(fn($record) => $record->q_request === null)
+                        ->hidden(fn($record) => $record?->q_request === null)
                         ->prefix('จำนวนขอ : ')
                         ->hiddenLabel()
                         ->numeric(),
                     TextEntry::make('q_lend')
-                        ->hidden(fn($record) => $record->q_lend === null)
+                        ->hidden(fn($record) => $record?->q_lend === null)
                         ->prefix('จำนวนยืม : ')
                         ->hiddenLabel()
                         ->numeric(),
                     TextEntry::make('q_all_return')
-                        ->hidden(fn($record) => $record->q_all_return === null)
+                        ->hidden(fn($record) => $record?->q_all_return === null)
                         ->prefix('จำนวนคืน : ')
                         ->hiddenLabel()
                         ->numeric(),
