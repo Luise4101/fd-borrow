@@ -13,6 +13,7 @@ use Filament\Support\RawJs;
 use Illuminate\Support\Str;
 use App\Models\Asset\Samnak;
 use App\Models\Asset\Section;
+use App\Services\EmailService;
 use Filament\Facades\Filament;
 use App\Models\Inventory\Store;
 use App\Models\Main\BorrowHead;
@@ -226,8 +227,8 @@ class BorrowResource extends Resource
         $token= session('hrapi_token');
         $userId = Filament::auth()->id();
         $ADUser = User::findOrFail($userId);
-        $api1 = 'https://api.dhammakaya.network/api/Person/getPersonAdInternal';
-        $api2 = 'https://api.dhammakaya.network/api/Organization/GetApproveStepByLogin';
+        $api1 = env('API_HR_PERSON');
+        $api2 = env('API_HR_APPROVE');
         $responsePersonData = Http::withOptions(['verify' => false])->withToken($token)->get($api1, ['aduser' => $ADUser['name']]);
         if($responsePersonData->successful()) {
             $dataResponse = $responsePersonData->json();
@@ -263,7 +264,7 @@ class BorrowResource extends Resource
                 ->inline()
                 ->options(BorrowStatus::class)
                 ->default(8)
-                ->disabled()
+                // ->disabled()
                 ->required()
                 ->columnSpan(5),
             TextInput::make('activity_name')
@@ -406,7 +407,7 @@ class BorrowResource extends Resource
                 ->default($approve_mail)
                 ->afterStateHydrated(function(Get $get, Set $set) {
                     $borrower = User::findOrFail($get('borrower_id'));
-                    $responseApi = Http::withOptions(['verify'=>false])->withToken(session('hrapi_token'))->get('https://api.dhammakaya.network/api/Organization/GetApproveStepByLogin', ['aduser'=>$borrower['name']]);
+                    $responseApi = Http::withOptions(['verify'=>false])->withToken(session('hrapi_token'))->get(env('API_HR_APPROVE'), ['aduser'=>$borrower['name']]);
                     if($responseApi->successful()) {
                         $dataResponse = $responseApi->json();
                         $dataData = $dataResponse['Data'];

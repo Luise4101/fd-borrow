@@ -12,6 +12,7 @@ use App\Models\Main\BorrowItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
+use App\Http\Controllers\BorrowController;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -27,6 +28,10 @@ class BorrowHead extends Model
     protected static function booted() {
         static::saving(function($borrowHead) {
             $borrowHead->updateSerialStatus();
+        });
+        static::saved(function($borrowHead) {
+            $controller = new BorrowController();
+            $controller->genDataMail($borrowHead);
         });
         static::deleting(function($borrowHead) {
             foreach($borrowHead->borrowitems as $borrowItem) {

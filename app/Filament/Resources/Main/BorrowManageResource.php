@@ -291,7 +291,7 @@ class BorrowManageResource extends Resource
                 ->columnSpan(1),
             Placeholder::make('data_borrower')->hiddenLabel()->content(function($record) {
                 $borrower = User::where('id', $record->borrower_id)->first();
-                $responseQhead = Http::withOptions(['verify'=>false])->withToken(session('hrapi_token'))->get('https://api.dhammakaya.network/api/Person/getPersonAdInternal', ['aduser'=>$record->qhead]);
+                $responseQhead = Http::withOptions(['verify'=>false])->withToken(session('hrapi_token'))->get(env('API_HR_PERSON'), ['aduser'=>$record->qhead]);
                 if($responseQhead->successful()) {
                     $dataResponse = $responseQhead->json();
                     $dataData = $dataResponse['Data'];

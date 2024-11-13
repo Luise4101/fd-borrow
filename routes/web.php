@@ -24,7 +24,7 @@ Route::post('/testMail/sendApi', function() {
     $message = request('message');
 
     $responseApi = Http::withOptions(['verify' => false])
-        ->post('https://fdnet.dhammakaya.network/application/api/send_mail_approve.php', [
+        ->post(env('API_SEND_MAIL'), [
             'to' => $to,
             'subject' => $subject,
             'message' => $message
