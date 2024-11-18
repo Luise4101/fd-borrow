@@ -22,7 +22,7 @@ class BorrowController extends Controller {
                 <tbody>
         ';
         foreach($borrowItems as $rsItem) {
-            $bg_tr = ($index % 2 === 0) ? '#fafafa' :'#f4f7fe';
+            $bg_tr = ($index % 2 === 0) ? '#f7f7f7' :'#caf0f8';
             $tableBorrowItem .= '
                     <tr style="height:40px;font-size:14px;line-height:1.1;font-weight:unset;background:'.$bg_tr.';">
                         <td style="text-align:center;">'.($index + 1).'.</td>
