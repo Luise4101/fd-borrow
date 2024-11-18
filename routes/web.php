@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OAuthController;
+use App\Http\Controllers\BorrowController;
 
 Route::get('/', function () {
     // return view('welcome');
@@ -13,6 +14,10 @@ Route::controller(OAuthController::class)->group(function() {
     Route::get('/admin/login', 'authorizeCall')->name('filament.admin.auth.login');
     Route::get('/admin/callback', 'callback')->name('callback');
     Route::post('/logout', 'logout')->name('filament.admin.auth.logout');
+});
+
+Route::controller(BorrowController::class)->group(function() {
+    Route::get('/borrow/access', 'accessWithToken')->name('borrow.access');
 });
 
 Route::get('/testMail', function() {
