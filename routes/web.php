@@ -6,8 +6,8 @@ use App\Http\Controllers\OAuthController;
 use App\Http\Controllers\BorrowController;
 
 Route::get('/', function () {
-    // return view('welcome');
-    return redirect('/admin');
+    return view('welcome');
+    // return redirect('/admin');
 });
 
 Route::controller(OAuthController::class)->group(function() {
