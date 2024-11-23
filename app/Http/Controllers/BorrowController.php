@@ -8,9 +8,8 @@ use App\Services\EmailService;
 use Filament\Facades\Filament;
 use App\Models\Main\BorrowHead;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Contracts\Encryption\DecryptException;
+use App\Http\Controllers\HRController;
 
 class BorrowController extends Controller {
     public function genDataMail(BorrowHead $borrowHead) {
@@ -79,39 +78,24 @@ class BorrowController extends Controller {
                 abort(400, 'Token is missing.');
             }
             $data = Crypt::decrypt($token);
-            $responseLoginApp = Http::withOptions(['verify' => false])->post(env('API_HR_LOGIN'), [
-                'UserName' => env('API_HR_USERNAME'),
-                'Password' => env('API_HR_PASSWORD'),
-            ]);
-            if ($responseLoginApp->successful()) {
-                $dataLogin = $responseLoginApp->json();
-                $tokenHR = $dataLogin['Token'];
-                session(['hrapi_token' => $tokenHR]);
-            } else {
-                abort(403, 'Failed to authenticate with HR API.');
+            $aduser = $data['qhead'] ?? null;
+            (new HRController())->fetchAndStoreUserData($aduser);
+            $userData = session('user_data');
+            if(!$userData) {
+                throw new \Exception('User data is missing.');
             }
-            $responsePersonData = Http::withOptions(['verify' => false])
-                ->withToken($tokenHR)
-                ->get(env('API_HR_PERSON'), ['aduser' => $data['qhead']]);
-            if ($responsePersonData->successful()) {
-                $dataResponse = $responsePersonData->json();
-                $dataData = $dataResponse['Data'];
-                $dataUser = $dataData[0];
-            } else {
-                abort(403, 'Failed to retrieve person data from HR API.');
-            }
-            $approver = User::updateOrCreate(['name' => $dataUser['Aduser']], [
-                'email' => $dataUser['Email'],
-                'fullname' => $dataUser['Fullname'],
-                'password' => '',
+            $approver = User::updateOrCreate(['name' => $userData['aduser']], [
+                'email' => $userData['email'],
+                'fullname' => $userData['fullname'],
+                'password' => ''
             ]);
+            $roleId = 3;
+            $approver->roles()->syncWithoutDetaching([$roleId]);
             Filament::auth()->login($approver);
             return redirect()->to(route('filament.admin.resources.main.borrows.edit', ['record' => $data['borrowId']]));
-        } catch (DecryptException $e) {
-            abort(403, 'Invalid or expired token.');
-        } catch (\Exception $e) {
-            abort(500, 'An unexpected error occurred.');
+        } catch(\Exception $e) {
+            Log::error($e->getMessage());
+            abort(500, 'An unexpected error occured'());
         }
     }
-
 }

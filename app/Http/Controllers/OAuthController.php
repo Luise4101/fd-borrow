@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Http;
+use App\Http\Controllers\HRController;
 use Laravel\Socialite\Facades\Socialite;
 
 class OAuthController extends Controller
@@ -15,31 +16,24 @@ class OAuthController extends Controller
     }
 
     public function callback() {
-        $responseLoginApp = Http::withOptions(['verify' => false])->post(env('API_HR_LOGIN'), [
-            'UserName' => env('API_HR_USERNAME'),
-            'Password' => env('API_HR_PASSWORD')
-        ]);
-        if($responseLoginApp->successful()) {
-            $dataLogin = $responseLoginApp->json();
-            $token = $dataLogin['Token'];
-            session(['hrapi_token' => $token]);
+        try {
+            $authADuser = Socialite::driver('laravelpassport')->user();
+            $aduser = $authADuser->name;
+            (new HRController())->fetchAndStoreUserData($aduser);
+            $userData = session('user_data');
+            if(!$userData) {
+                throw new \Exception('User data is missing.');
+            }
+            $user = User::updateOrCreate(['name' => $userData['aduser']], [
+                'email' => $userData['email'],
+                'fullname' => $userData['fullname'],
+                'password' => ''
+            ]);
+            Filament::auth()->login($user);
+            return redirect('/admin');
+        } catch(\Exception $e) {
+            abort(500, 'An unexpected error occurred: '.$e->getMessage());
         }
-        $authADuser = Socialite::driver('laravelpassport')->user();
-        $responsePersonData = Http::withOptions(['verify' => false])->withToken($token)->get(env('API_HR_PERSON'), [
-            'aduser' => $authADuser->name
-        ]);
-        if($responsePersonData->successful()) {
-            $dataResponse = $responsePersonData->json();
-            $dataData = $dataResponse['Data'];
-            $dataUser = $dataData[0];
-        }
-        $user = User::updateOrCreate(['name' => $dataUser['Aduser']], [
-            'email' => $dataUser['Email'],
-            'fullname' => $dataUser['Fullname'],
-            'password' => ''
-        ]);
-        Filament::auth()->login($user);
-        return redirect('/admin');
     }
 
     public function logout(Request $request) {

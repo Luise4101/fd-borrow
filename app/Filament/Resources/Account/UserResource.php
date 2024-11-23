@@ -83,7 +83,8 @@ class UserResource extends Resource
                     ->color(function(string $state): string {
                         return match($state) {
                             'ผู้ดูแลระบบ' => 'info',
-                            'เจ้าหน้าที่' => 'warning'
+                            'เจ้าหน้าที่' => 'warning',
+                            'หัวหน้ากอง' => 'success'
                         };
                     }),
                 TextColumn::make('created_at')

@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Http;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Alignment;
+use App\Http\Controllers\HRController;
 use Filament\Support\Enums\FontWeight;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
@@ -48,6 +49,7 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Infolists\Components\RepeatableEntry;
 use Awcodes\TableRepeater\Components\TableRepeater;
 use App\Filament\Resources\Inventory\ProductResource;
@@ -202,16 +204,19 @@ class BorrowResource extends Resource
                 ->relationship('status','name')
                 ->native(false)
         ])->actions([
-            ViewAction::make()
-                ->openUrlInNewTab()
-                ->visible(fn($record) => (int)$record?->borrower_id !== Filament::auth()->id()),
+            // ViewAction::make()
+            //     ->openUrlInNewTab()
+            //     ->visible(fn($record) => (int)$record?->borrower_id !== Filament::auth()->id()),
             EditAction::make()
                 ->openUrlInNewTab()
-                ->visible(fn($record) => (int)$record?->borrower_id === Filament::auth()->id()),
+                // ->visible(fn($record) => (int)$record?->borrower_id === Filament::auth()->id())
+                ,
             DeleteAction::make()
-                ->hidden(fn($record) => in_array($record->status_id, [11, 12]))
-                ->visible(fn($record) => $record?->borrower_id == Filament::auth()->id())
-        ], position:ActionsPosition::BeforeCells)->defaultSort('id', 'desc');
+                // ->hidden(fn($record) => in_array($record->status_id, [11, 12]))
+                // ->visible(fn($record) => $record?->borrower_id == Filament::auth()->id())
+        ], position:ActionsPosition::BeforeCells)
+        ->bulkActions([DeleteBulkAction::make()])
+        ->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array {
@@ -224,34 +229,11 @@ class BorrowResource extends Resource
     }
 
     public static function getBorrowheadFormSchema() {
-        $token= session('hrapi_token');
-        $userId = Filament::auth()->id();
-        $ADUser = User::findOrFail($userId);
-        $api1 = env('API_HR_PERSON');
-        $api2 = env('API_HR_APPROVE');
-        $responsePersonData = Http::withOptions(['verify' => false])->withToken($token)->get($api1, ['aduser' => $ADUser['name']]);
-        if($responsePersonData->successful()) {
-            $dataResponse = $responsePersonData->json();
-            $dataData = $dataResponse['Data'];
-            $dataUser = $dataData[0];
+        $userData = session('user_data');
+        $approveData = session('approve_data');
+        if(!$userData || !$approveData) {
+            abort(403, 'Missing user or approve data.');
         }
-        $user_tel = $dataUser['Mobile'];
-        $user_lineid = $dataUser['Lineid'];
-        $user_qsamnak = $dataUser['DepartmentId'];
-        $user_csamnak = $dataUser['Department'];
-        $user_qsection = $dataUser['SectionId'];
-        $user_csection = $dataUser['Section'];
-        $user_qkong = $dataUser['OfficeId'];
-        $user_ckong = $dataUser['Office'];
-        $responseApproveData = Http::withOptions(['verify' => false])->withToken($token)->get($api2, ['aduser' => $ADUser['name']]);
-        if($responseApproveData->successful()) {
-            $dataResponse = $responseApproveData->json();
-            $dataData = $dataResponse['Data'];
-            $dataApprove = $dataData[0];
-        }
-        $approve_qhead = $dataApprove['HeadLogin'];
-        $approve_chead = $dataApprove['HeadFullName'];
-        $approve_mail = $dataApprove['HeadEmail'];
         return FormSection::make(new HtmlString('<style>.bg-color{background-color:#d9edf6;}</style>'))->schema([
             TextInput::make('id')
                 ->hiddenLabel()
@@ -298,7 +280,7 @@ class BorrowResource extends Resource
                         return tel.startsWith('02') ? tel.replace(/(\d{2})(\d{3})(\d{4})/, '$1-$2-$3') : tel.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
                     }).join(', ');
                 JS))
-                ->default($user_tel)
+                ->default($userData['mobile'])
                 ->dehydrateStateUsing(function($state) {
                     return collect(explode(',', $state))->map(function($tel) {
                         return preg_replace('/[^\d]/', '', $tel);
@@ -309,14 +291,14 @@ class BorrowResource extends Resource
                 ->hiddenLabel()
                 ->prefix(__('Line Id'))
                 ->maxLength(50)
-                ->default($user_lineid)
+                ->default($userData['lineid'])
                 ->columnSpan(2),
-            Hidden::make('qsamnak')->default($user_qsamnak),
+            Hidden::make('qsamnak')->default($userData['qsamnak']),
             TextInput::make('csamnak')
                 ->hiddenLabel()
                 ->prefix(__('สำนัก'))
                 ->readonly()
-                ->default($user_csamnak)
+                ->default($userData['csamnak'])
                 ->afterStateHydrated(function($state, Get $get, Set $set) {
                     if(!$state) {
                         if($samnak = Samnak::where('qsamnak', $get('qsamnak'))->first()) {
@@ -337,12 +319,12 @@ class BorrowResource extends Resource
                     }
                 })
                 ->columnSpan(2),
-            Hidden::make('qsection')->default($user_qsection),
+            Hidden::make('qsection')->default($userData['qsection']),
             TextInput::make('csection')
                 ->hiddenLabel()
                 ->prefix(__('ฝ่าย'))
                 ->readonly()
-                ->default($user_csection)
+                ->default($userData['csection'])
                 ->afterStateHydrated(function($state, Get $get, Set $set) {
                     if(!$state) {
                         if($section = Section::where('qsection', $get('qsection'))->first()) {
@@ -364,12 +346,12 @@ class BorrowResource extends Resource
                     }
                 })
                 ->columnSpan(2),
-            Hidden::make('qkong')->default($user_qkong),
+            Hidden::make('qkong')->default($userData['qkong']),
             TextInput::make('ckong')
                 ->hiddenLabel()
                 ->prefix(__('กอง'))
                 ->readonly()
-                ->default($user_ckong)
+                ->default($userData['ckong'])
                 ->afterStateHydrated(function($state, Get $get, Set $set) {
                     if(!$state) {
                         if($kong = Kong::where('qkong', $get('qkong'))->first()) {
@@ -391,29 +373,25 @@ class BorrowResource extends Resource
                     }
                 })
                 ->columnSpan(2),
-            Hidden::make('qhead')->default($approve_qhead),
+            Hidden::make('qhead')->default($approveData['qhead']),
             TextInput::make('chead')
                 ->hiddenLabel()
                 ->prefix(__('หัวหน้ากอง'))
                 ->maxLength(100)
                 ->readonly()
-                ->default($approve_chead)
+                ->default($approveData['chead'])
                 ->columnSpan(2),
             TextInput::make('head_mail')
                 ->hiddenLabel()
                 ->prefix(__('Email หัวหน้ากอง'))
                 ->maxLength(100)
                 ->readonly()
-                ->default($approve_mail)
+                ->default($approveData['email'])
                 ->afterStateHydrated(function(Get $get, Set $set) {
                     $borrower = User::findOrFail($get('borrower_id'));
-                    $responseApi = Http::withOptions(['verify'=>false])->withToken(session('hrapi_token'))->get(env('API_HR_APPROVE'), ['aduser'=>$borrower['name']]);
-                    if($responseApi->successful()) {
-                        $dataResponse = $responseApi->json();
-                        $dataData = $dataResponse['Data'];
-                        $dataApprove = $dataData[0];
-                    }
-                    $set('head_mail', $dataApprove['HeadEmail']);
+                    (new HRController())->fetchApproveBorrowData($borrower['name']);
+                    $dataApprove = session('approve_each_head');
+                    $set('head_mail', $dataApprove['email']);
                 })
                 ->columnSpan(2),
             DateTimePicker::make('approved_at')

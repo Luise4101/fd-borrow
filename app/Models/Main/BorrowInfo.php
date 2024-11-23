@@ -15,8 +15,8 @@ class BorrowInfo extends Model
     protected $fillable = ['borrow_head_id','sort','purpose','q_use'];
     protected static function booted() {
         static::creating(function($borrowInfo) {
-            $maxSort = BorrowInfo::max('sort');
-            $borrowInfo->sort = $maxSort + 1;
+            $maxSort = BorrowInfo::where('borrow_head_id', $borrowInfo->borrow_head_id)->max('sort');
+            $borrowInfo->sort = $maxSort ? $maxSort + 1 : 1;
         });
     }
 
