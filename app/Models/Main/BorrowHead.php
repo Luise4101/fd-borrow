@@ -29,10 +29,13 @@ class BorrowHead extends Model
         static::saving(function($borrowHead) {
             $borrowHead->updateSerialStatus();
         });
-        static::saved(function($borrowHead) {
-            $controller = new BorrowController();
-            $controller->genDataMail($borrowHead);
-        });
+        // static::saved(function($borrowHead) {
+        //     $borrowHead->loadMissing('borrowitems');
+        //     if($borrowHead->borrowitems->isNotEmpty()) {
+        //         $controller = new BorrowController();
+        //         $controller->genDataMail($borrowHead);
+        //     }
+        // });
         static::deleting(function($borrowHead) {
             foreach($borrowHead->borrowitems as $borrowItem) {
                 $borrowItem->reverseStoreQuantity();
