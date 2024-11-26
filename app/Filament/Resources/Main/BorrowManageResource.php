@@ -253,7 +253,6 @@ class BorrowManageResource extends Resource
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
-                ->minutesStep(15)
                 ->displayFormat('j F Y H:i')
                 ->disabled(fn() => Filament::auth()->user()->roles->first()->id !== 1)
                 ->columnSpan(1),
@@ -263,7 +262,6 @@ class BorrowManageResource extends Resource
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
-                ->minutesStep(15)
                 ->displayFormat('j F Y H:i')
                 ->default(now())
                 ->required()
@@ -285,7 +283,6 @@ class BorrowManageResource extends Resource
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
-                ->minutesStep(15)
                 ->displayFormat('j F Y H:i')
                 ->disabled()
                 ->columnSpan(1),

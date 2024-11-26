@@ -400,7 +400,6 @@ class BorrowResource extends Resource
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
-                ->minutesStep(15)
                 ->displayFormat('j F Y H:i น.')
                 ->disabled()
                 ->columnSpan(2),
@@ -410,7 +409,6 @@ class BorrowResource extends Resource
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
-                ->minutesStep(15)
                 ->displayFormat('j F Y H:i น.')
                 ->default(now())
                 ->required()
@@ -433,7 +431,6 @@ class BorrowResource extends Resource
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
-                ->minutesStep(15)
                 ->displayFormat('j F Y H:i น.')
                 ->disabled()
                 ->columnSpan(2),

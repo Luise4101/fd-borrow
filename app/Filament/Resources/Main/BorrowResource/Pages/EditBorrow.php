@@ -18,19 +18,16 @@ class EditBorrow extends EditRecord
     protected function getHeaderActions(): array { return [
         Action::make('approve')
             ->label('อนุมัติ')
-            ->action(function($record) {
-                $result = BorrowHead::where('id', $record->id)
-                ->update([
-                    'status_id' => 9,
-                    'approved_at' => Carbon::now()
-                ])
-                ;
-                if(!$result) {
-                    $this->failure();
+            ->action(function(BorrowHead $record): void {
+                $record->status_id = 9;
+                $record->approved_at = now();
+                if(!$record->save()) {
+                    Notification::make()->danger()->title('Approve Failed')->body('การอนุมัติรายการขอใช้ผิดพลาด โปรดติดต่อเจ้าหน้าที่')->send();
                     return;
+                } else {
+                    Notification::make()->success()->title('Borrow Approved')->body('อนุมัติรายการขอใช้วิทยุสื่อสาร เรียบร้อยแล้ว')->send();
+                    $this->redirect($this->getResource()::getUrl('edit', ['record' => $this->record->id]));
                 }
-                Notification::make()->success()->title('Borrow Approved')->body('อนุมัติรายการขอใช้วิทยุสื่อสาร เรียบร้อยแล้ว')->send();
-                $this->redirect($this->getResource()::getUrl('edit', ['record' => $this->record->id]));
             })
             ->visible(function($record) {
                 return $record?->qhead === Filament::auth()->user()->name;
