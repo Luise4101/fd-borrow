@@ -7,9 +7,11 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use App\Models\Main\BorrowHead;
 use Filament\Actions\DeleteAction;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use App\Http\Controllers\BorrowController;
 use App\Filament\Resources\Main\BorrowResource;
 
 class EditBorrow extends EditRecord
@@ -31,8 +33,7 @@ class EditBorrow extends EditRecord
             })
             ->visible(function($record) {
                 return $record?->qhead === Filament::auth()->user()->name;
-            })
-            ,
+            }),
         DeleteAction::make()
     ];}
     protected function getRedirectUrl(): string {
@@ -45,5 +46,14 @@ class EditBorrow extends EditRecord
         foreach($data as $key=>$val){ if(is_string($val)){ $data[$key] = trim($val); } }
         $data['updated_by'] = Filament::auth()->id();
         return $data;
+    }
+    protected function afterSave(): void {
+        $this->record->load('borrowitems');
+        if($this->record->borrowitems->isNotEmpty()) {
+            $controller = new BorrowController();
+            $controller->genDataMail($this->record);
+        } else {
+            Log::warning('Email not sent: No borrowitems found');
+        }
     }
 }
