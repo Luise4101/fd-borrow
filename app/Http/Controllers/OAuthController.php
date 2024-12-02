@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\HRController;
 use Laravel\Socialite\Facades\Socialite;
 
