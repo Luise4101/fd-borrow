@@ -32,10 +32,33 @@ class EditBorrow extends EditRecord
                 }
             })
             ->visible(function($record) {
-                return $record?->qhead === Filament::auth()->user()->name;
+                return $record->status_id == 8 && $record?->qhead === Filament::auth()->user()->name;
+            }),
+        Action::make('disapprove')
+            ->label('ไม่อนุมัติ')
+            ->color('danger')
+            ->action(function(BorrowHead $record): void {
+                $record->status_id = 10;
+                $record->approved_at = now();
+                if(!$record->save()) {
+                    Notification::make()->danger()->title('Approve Failed')->body('การอนุมัติรายการขอใช้ผิดพลาด โปรดติดต่อเจ้าหน้าที่')->send();
+                    return;
+                } else {
+                    Notification::make()->danger()->title('Borrow Disapproved')->body('ไม่อนุมัติรายการขอใช้วิทยุสื่อสาร เรียบร้อยแล้ว')->send();
+                    $this->redirect($this->getResource()::getUrl('edit', ['record' => $this->record->id]));
+                }
+            })
+            ->visible(function($record) {
+                return $record->status_id == 8 && $record?->qhead === Filament::auth()->user()->name;
             }),
         DeleteAction::make()
-    ];}
+            ->hidden(function($record) {
+                return $record->status_id != 8;
+            })
+            ->visible(function($record) {
+                return $record?->qhead !== Filament::auth()->user()->name;
+            })
+    ]; }
     protected function getRedirectUrl(): string {
         return $this->getResource()::getUrl('index');
     }

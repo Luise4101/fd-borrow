@@ -81,7 +81,7 @@ class BorrowController extends Controller {
             $roleId = 3;
             $approver->roles()->syncWithoutDetaching([$roleId]);
             Filament::auth()->login($approver);
-            return redirect()->to(route('filament.admin.resources.main.borrows.edit', ['record' => $data['borrowId']]));
+            return redirect()->to(route('filament.admin.resources.main.borrows.view', ['record' => $data['borrowId']]));
         } catch(\Exception $e) {
             Log::error($e->getMessage());
             abort(500, 'An unexpected error occured'());

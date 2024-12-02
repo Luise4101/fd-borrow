@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Http;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Alignment;
+use App\Http\Controllers\HRController;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Actions\EditAction;
@@ -213,59 +214,65 @@ class BorrowManageResource extends Resource
     }
 
     public static function getBorrowheadFormSchema() {
-        return FilamentSection::make()->schema([
+        return FilamentSection::make(new HtmlString('<style>.bg-color{background-color:#d9edf6;}</style>'))->schema([
             TextInput::make('id')
                 ->hiddenLabel()
-                ->prefix(__('Borrow ID'))
-                ->disabled()
+                ->prefix(__('BID'))
+                ->readonly()
                 ->columnSpan(1),
-            Select::make('status_id')
+            ToggleButtons::make('status_id')
                 ->hiddenLabel()
-                ->prefix(__('สถานะการยืม'))
-                ->relationship('status', 'name')
-                ->native(false)
+                ->inline()
+                ->options(BorrowStatus::class)
                 ->required()
-                ->columnSpan(1),
-            Placeholder::make('csamnak_ckong')->hiddenLabel()->content(function($record) {
-                $samnak = Samnak::where('qsamnak', $record->qsamnak)->first();
-                $section = Section::where('qsection', $record->qsection)->first();
-                $kong = Kong::where('qkong', $record->qkong)->first();
-                return new HtmlString('
-                    <style>
-                        .gap-6 {gap: 0.5rem; !important}
-                        .fi-fo-repeater-item-header {padding-bottom: 0.5rem !important;padding-top: 0.5rem !important;}
-                        .title {font-size: 1.05rem;}
-                        td.value {padding-left: 0.5rem;padding-right: 1rem;}
-                        .label {font-weight: 700;}
-                        .value {font-size: 0.95rem}
-                        .important {color: #084198;}
-                    </style>
-                    <div class="text-right mt-1 px-2">
-                        <strong class="title">'.$samnak->csamnak.' </strong>
-                        <strong class="title">'.$section->csection.', </strong>
-                        <strong class="title important">'.$kong->ckong.'</strong>
-                    </div>
-                ');
-            })->columnSpan(2),
-            DateTimePicker::make('approved_at')
-                ->hiddenLabel()
-                ->prefix('วันที่อนุมัติ')
-                ->seconds(false)
-                ->native(false)
-                ->firstDayOfWeek(7)
-                ->displayFormat('j F Y H:i')
-                ->disabled(fn() => Filament::auth()->user()->roles->first()->id !== 1)
-                ->columnSpan(1),
+                ->columnSpan(5),
+            Placeholder::make('data_borrower')->hiddenLabel()
+                ->content(function($record) {
+                    $borrower = User::where('id', $record->borrower_id)->first();
+                    $head = (new HRController())->fetchApproverData($record->qhead);
+                    return new HtmlString('
+                        <style>
+                            .gap-6 {gap: 0.5rem; !important}
+                            .fi-fo-repeater-item-header {padding-bottom: 0.5rem !important;padding-top: 0.5rem !important;}
+                            td.value {padding-left: 0.5rem;padding-right: 1rem;}
+                            .label {font-weight: 700;}
+                            .value {font-size: 0.95rem}
+                            .bg-lime-100 {background-color: #ecfccb;}
+                        </style>
+                        <table style="max-width:100%;">
+                            <tr>
+                                <td class="label">ผู้ยืม:</td>
+                                <td class="value">'.$borrower->fullname.'</td>
+                                <td class="label">เบอร์โทร:</td>
+                                <td class="value">'.$record->borrower_tel.'</td>
+                                <td class="label">Line ID:</td>
+                                <td class="value">'.$record->borrower_lineid.'</td>
+                                <td class="label">Email:</td>
+                                <td class="value">'.$borrower->email.'</td>
+                            </tr>
+                            <tr>
+                                <td class="label">หัวหน้ากอง:</td>
+                                <td class="value">'.$record->chead.'</td>
+                                <td class="label">เบอร์โทร:</td>
+                                <td class="value">'.$head->mobile.'</td>
+                                <td class="label">Line ID:</td>
+                                <td class="value">'.$head->lineid.'</td>
+                                <td class="label">Email:</td>
+                                <td class="value">'.$head->email.'</td>
+                            </tr>
+                        </table>
+                    ');
+                })->columnSpanFull(),
             DateTimePicker::make('pickup_at')
                 ->hiddenLabel()
-                ->prefix('วันที่รับของ')
+                ->prefix('วันที่รับอุปกรณ์')
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
                 ->displayFormat('j F Y H:i')
                 ->default(now())
                 ->required()
-                ->columnSpan(1),
+                ->columnSpan(2),
             DateTimePicker::make('return_schedule')
                 ->hiddenLabel()
                 ->prefix('กำหนดส่งคืน')
@@ -275,66 +282,45 @@ class BorrowManageResource extends Resource
                 ->minutesStep(15)
                 ->displayFormat('j F Y H:i')
                 ->default(now())
-                ->columnSpan(1),
+                ->columnSpan(2),
             DateTimePicker::make('return_at')
                 ->hiddenLabel()
-                ->prefix('วันที่คืนของ')
+                ->prefix('วันที่คืนอุปกรณ์')
                 ->visibleOn('edit')
                 ->seconds(false)
                 ->native(false)
                 ->firstDayOfWeek(7)
                 ->displayFormat('j F Y H:i')
                 ->disabled()
-                ->columnSpan(1),
-            Placeholder::make('data_borrower')->hiddenLabel()->content(function($record) {
-                $borrower = User::where('id', $record->borrower_id)->first();
-                $responseQhead = Http::withOptions(['verify'=>false])->withToken(session('hrapi_token'))->get(env('API_HR_PERSON'), ['aduser'=>$record->qhead]);
-                if($responseQhead->successful()) {
-                    $dataResponse = $responseQhead->json();
-                    $dataData = $dataResponse['Data'];
-                    $dataHead = $dataData[0];
-                }
+                ->columnSpan(2),
+            Placeholder::make('data_activity')->hiddenLabel()->content(function($record) {
+                $approveDate = $record?->approved_at ? $record->approved_at->translatedFormat('j F Y H:i') : 'N/A';
                 return new HtmlString('
-                    <table>
-                        <tr>
-                            <td class="label">ผู้ขอยืม:</td>
-                            <td class="value">'.$borrower->fullname.'</td>
-                            <td class="label">เบอร์โทร:</td>
-                            <td class="value">'.$record->borrower_tel.'</td>
-                            <td class="label">Line ID:</td>
-                            <td class="value">'.$record->borrower_lineid.'</td>
-                            <td class="label">Email:</td>
-                            <td class="value">'.$borrower->email.'</td>
-                        </tr>
-                        <tr>
-                            <td class="label">หัวหน้ากอง:</td>
-                            <td class="value">'.$record->chead.'</td>
-                            <td class="label">เบอร์โทร:</td>
-                            <td class="value">'.$dataHead['Mobile'].'</td>
-                            <td class="label">Line ID:</td>
-                            <td class="value">'.$dataHead['Lineid'].'</td>
-                            <td class="label">Email:</td>
-                            <td class="value">'.$dataHead['Email'].'</td>
-                        </tr>
-                    </table>
-                    <table>
-                        <tr>
-                            <td class="label">ชื่อกิจกรรม :</td>
-                            <td class="value">'.$record->activity_name.'</td>
-                            <td class="label">สถานที่ใช้งาน :</td>
-                            <td class="value">'.$record->activity_place.'</td>
-                        </tr>
-                    </table>
+                    <table><tr>
+                        <td class="label">วันที่อนุมัติ :</td>
+                        <td class="value">'.$approveDate.'</td>
+                        <td class="label">ชื่อกิจกรรม :</td>
+                        <td class="value">'.$record->activity_name.'</td>
+                        <td class="label">สถานที่ใช้งาน :</td>
+                        <td class="value">'.$record->activity_place.'</td>
+                    </tr></table>
                 ');
             })->columnSpanFull()
-        ])->columns(4)->columnSpan(4)->compact();
+        ])->extraAttributes(['class' => 'bg-color'])->columns(6)->columnSpan(4)->compact();
     }
 
     public static function getBorrowitemsRepeater() {
         return FilamentSection::make('รายละเอียดอุปกรณ์ที่ยืม')->schema([
-            Repeater::make('borrowitems')
+            TableRepeater::make('borrowitems')
                 ->relationship()
                 ->hiddenLabel()
+                ->headers([
+                    Header::make('รายละเอียดอุปกรณ์')->width('210px'),
+                    Header::make('จำนวนขอ')->align(Alignment::Center)->width('80px'),
+                    Header::make('จำนวนให้ยืม')->align(Alignment::Center)->width('80px'),
+                    Header::make('จำนวนคืน')->align(Alignment::Center)->width('80px'),
+                    Header::make('เลขทะเบียนวิทยุสื่อสาร')->align(Alignment::Center)
+                ])
                 ->schema([
                     Select::make('product_id')
                         ->hiddenLabel()
@@ -366,30 +352,17 @@ class BorrowManageResource extends Resource
                         })
                         ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                         ->required()
-                        ->columnSpan(1),
-                    TextInput::make('price_product')
-                        ->hiddenLabel()
-                        ->prefix(__('ราคาอุปกรณ์'))
-                        ->dehydrated()
-                        ->readonly()
-                        ->columnSpan(1),
-                    TextInput::make('price_borrow')
-                        ->hiddenLabel()
-                        ->prefix(__('ค่ามัดจำ'))
-                        ->dehydrated()
-                        ->readonly()
-                        ->columnSpan(1),
+                        ->columnSpan(2),
+                    Hidden::make('price_product')->dehydrated(),
+                    Hidden::make('price_borrow')->dehydrated(),
                     TextInput::make('q_request')
                         ->hiddenLabel()
-                        ->prefix(__('จำนวนที่ขอ'))
                         ->numeric()
                         ->minValue(0)
                         ->maxValue(1000)
-                        ->disabled()
                         ->columnSpan(1),
                     TextInput::make('q_lend')
                         ->hiddenLabel()
-                        ->prefix(__('จำนวนที่ยืม'))
                         ->numeric()
                         ->live(onBlur: true)
                         ->rules(function(Get $get, ?Model $record = null) {
@@ -409,12 +382,10 @@ class BorrowManageResource extends Resource
                         ->dehydrated()
                         ->required()
                         ->columnSpan(1),
-                    TextInput::make('q_return')
+                    TextInput::make('q_all_return')
                         ->hiddenLabel()
-                        ->prefix(__('จำนวนที่คืน'))
                         ->numeric()
                         ->default(0)
-                        ->disabled()
                         ->columnSpan(1),
                     Hidden::make('total_price_borrow')
                         ->hiddenLabel()
@@ -433,8 +404,8 @@ class BorrowManageResource extends Resource
                         ->reactive()
                         ->dehydrated()
                         ->disabled(function(Get $get) {return $get('category_id') != 3;})
-                        ->columnSpan(2)
-                ])->columns(4)
+                        ->columnSpanFull()
+                ])->deleteAction(fn(Action $action) => $action->requiresConfirmation())
                 ->extraItemActions([
                     Action::make('openProduct')
                         ->tooltip('Open product')
@@ -448,14 +419,18 @@ class BorrowManageResource extends Resource
                         ->hidden(fn(array $arguments, Repeater $component): bool =>
                             array_key_exists('item', $arguments) && blank($component->getRawItemState($arguments['item'])['product_id'])
                         )
-                ])
+                ])->emptyLabel('กรุณาเพิ่มอุปกรณ์ที่จะขอยืม')
                 ->addActionLabel('เพิ่มอุปกรณ์ที่ยืม')
                 ->orderColumn('sort')
                 ->defaultItems(1)
+                ->streamlined()
                 ->collapsible()
                 ->required()
                 ->live(onBlur: true)
                 ->afterStateUpdated(function (Get $get, Set $set) {
+                    self::updateTotalCost($get, $set);
+                })
+                ->afterStateHydrated(function (Get $get, Set $set) {
                     self::updateTotalCost($get, $set);
                 })
         ])->compact()->collapsible();
@@ -508,7 +483,7 @@ class BorrowManageResource extends Resource
                 ->afterStateHydrated(function(Get $get, Set $set) {
                     self::updateQuantityUse($get, $set);
                 })
-        ])->columns(3)->compact()->collapsible();
+        ])->extraAttributes(['class' => 'bg-lime-100'])->columns(3)->compact()->collapsible();
     }
 
     public static function getBorrowasideFormSchema() {

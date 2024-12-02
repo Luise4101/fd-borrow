@@ -20,7 +20,7 @@ class BorrowHead extends Model
 {
     use HasFactory;
     protected $table = 'borrow_heads';
-    protected $casts = ['attachment'=>'array', 'proof_payment'=>'array'];
+    protected $casts = ['approved_at' => 'datetime', 'attachment'=>'array', 'proof_payment'=>'array'];
     protected $fillable = ['borrower_id', 'borrower_tel', 'borrower_lineid', 'status_id', 'qsamnak', 'qsection', 'qkong', 'qhead',
         'chead', 'approved_at', 'pickup_at', 'return_schedule', 'return_at', 'activity_name', 'q_attendee', 'q_staff',
         'activity_place', 'attachment', 'price_borrow_all', 'price_fine', 'proof_payment', 'updated_by', 'note'

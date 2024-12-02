@@ -13,7 +13,6 @@ use Filament\Support\RawJs;
 use Illuminate\Support\Str;
 use App\Models\Asset\Samnak;
 use App\Models\Asset\Section;
-use App\Services\EmailService;
 use Filament\Facades\Filament;
 use App\Models\Inventory\Store;
 use App\Models\Main\BorrowHead;
@@ -23,9 +22,7 @@ use App\Models\Inventory\Product;
 use Awcodes\TableRepeater\Header;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\HtmlString;
-use Illuminate\Support\Facades\Log;
 use Filament\Forms\Components\Group;
-use Illuminate\Support\Facades\Http;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Alignment;
@@ -39,6 +36,7 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Actions\DeleteAction;
@@ -55,11 +53,13 @@ use Awcodes\TableRepeater\Components\TableRepeater;
 use App\Filament\Resources\Inventory\ProductResource;
 use Filament\Forms\Components\Section as FormSection;
 use Filament\Infolists\Components\Group as InfolistGroup;
+use Filament\Infolists\Components\Actions as InfolistActions;
 use Filament\Infolists\Components\Section as InfolistSection;
 use App\Filament\Resources\Main\BorrowResource\Pages\EditBorrow;
 use App\Filament\Resources\Main\BorrowResource\Pages\ViewBorrow;
 use App\Filament\Resources\Main\BorrowResource\Pages\ListBorrows;
 use App\Filament\Resources\Main\BorrowResource\Pages\CreateBorrow;
+use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
 class BorrowResource extends Resource
 {
@@ -88,7 +88,7 @@ class BorrowResource extends Resource
                         ->label('อัปเดตล่าสุด')
                         ->inlineLabel()
                         ->content(fn (?BorrowHead $record): ?string => $record?->updated_at?->diffForHumans())
-                ])->hidden(fn (?BorrowHead $record) => $record ===null)->compact(),
+                ])->hidden(fn (?BorrowHead $record) => $record === null)->compact(),
                 static::getBorrowasideFormSchema()
             ])->columnSpan(['md' => 4, 'lg' => 1])
         ])->columns(4);
@@ -191,29 +191,28 @@ class BorrowResource extends Resource
                 ->toggleable(isToggledHiddenByDefault:true)
                 ->searchable()
                 ->sortable()
-                ->date('j F Y, H:i'),
+                ->date('j M y H:i'),
             TextColumn::make('updated_at')
                 ->label(__('วันที่อัปเดต'))
                 ->toggleable(isToggledHiddenByDefault:true)
                 ->searchable()
                 ->sortable()
-                ->date('j F Y, H:i')
+                ->date('j M y H:i')
         ])->filters([
             SelectFilter::make('status')
                 ->label(__('สถานะการยืม'))
                 ->relationship('status','name')
                 ->native(false)
         ])->actions([
-            // ViewAction::make()
-            //     ->openUrlInNewTab()
-            //     ->visible(fn($record) => (int)$record?->borrower_id !== Filament::auth()->id()),
+            ViewAction::make()
+                ->openUrlInNewTab()
+                ->visible(fn($record) => (int)$record?->borrower_id !== Filament::auth()->id()),
             EditAction::make()
                 ->openUrlInNewTab()
-                // ->visible(fn($record) => (int)$record?->borrower_id === Filament::auth()->id())
-                ,
+                ->visible(fn($record) => (int)$record?->borrower_id === Filament::auth()->id()),
             DeleteAction::make()
-                // ->hidden(fn($record) => in_array($record->status_id, [11, 12]))
-                // ->visible(fn($record) => $record?->borrower_id == Filament::auth()->id())
+                ->hidden(fn($record) => $record->status_id != 8)
+                ->visible(fn($record) => $record?->borrower_id == Filament::auth()->id())
         ], position:ActionsPosition::BeforeCells)
         ->bulkActions([DeleteBulkAction::make()])
         ->defaultSort('id', 'desc');
@@ -238,7 +237,7 @@ class BorrowResource extends Resource
             TextInput::make('id')
                 ->hiddenLabel()
                 ->prefix(__('BID'))
-                ->disabled()
+                ->readonly()
                 ->visibleOn('edit')
                 ->columnSpan(1),
             ToggleButtons::make('status_id')
@@ -246,21 +245,9 @@ class BorrowResource extends Resource
                 ->inline()
                 ->options(BorrowStatus::class)
                 ->default(8)
-                // ->disabled()
+                ->disabled()
                 ->required()
                 ->columnSpan(5),
-            TextInput::make('activity_name')
-                ->hiddenLabel()
-                ->prefix('ชื่อกิจกรรม')
-                ->maxLength(200)
-                ->required()
-                ->columnSpan(3),
-            TextInput::make('activity_place')
-                ->hiddenLabel()
-                ->prefix('สถานที่ใช้งาน')
-                ->maxLength(200)
-                ->required()
-                ->columnSpan(3),
             Select::make('borrower_id')
                 ->hiddenLabel()
                 ->prefix(__('ผู้ยืม'))
@@ -289,7 +276,7 @@ class BorrowResource extends Resource
                 ->columnSpan(2),
             TextInput::make('borrower_lineid')
                 ->hiddenLabel()
-                ->prefix(__('Line Id'))
+                ->prefix(__('Line ID'))
                 ->maxLength(50)
                 ->default($userData['lineid'])
                 ->columnSpan(2),
@@ -387,11 +374,11 @@ class BorrowResource extends Resource
                 ->maxLength(100)
                 ->readonly()
                 ->default($approveData['email'])
-                ->afterStateHydrated(function(Get $get, Set $set) {
-                    $borrower = User::findOrFail($get('borrower_id'));
-                    (new HRController())->fetchApproveBorrowData($borrower['name']);
-                    $dataApprove = session('approve_each_head');
-                    $set('head_mail', $dataApprove['email']);
+                ->afterStateHydrated(function($record, Set $set) {
+                    if($record) {
+                        $head = (new HRController())->fetchApproverData($record->qhead);
+                        $set('head_mail', $head->email);
+                    }
                 })
                 ->columnSpan(2),
             DateTimePicker::make('approved_at')
@@ -434,6 +421,18 @@ class BorrowResource extends Resource
                 ->displayFormat('j F Y H:i น.')
                 ->disabled()
                 ->columnSpan(2),
+            TextInput::make('activity_name')
+                    ->hiddenLabel()
+                    ->prefix('ชื่อกิจกรรม')
+                    ->maxLength(200)
+                    ->required()
+                    ->columnSpan(3),
+                TextInput::make('activity_place')
+                    ->hiddenLabel()
+                    ->prefix('สถานที่ใช้งาน')
+                    ->maxLength(200)
+                    ->required()
+                    ->columnSpan(3),
         ])->extraAttributes(['class' => 'bg-color'])->columns(6)->columnSpan(4)->compact();
     }
 
@@ -477,7 +476,8 @@ class BorrowResource extends Resource
                     ->modalHeading('ลบรายการยืมทั้งหมดจากฟอร์มนี้')
                     ->requiresConfirmation()
                     ->color('danger')
-                    ->action(fn (Set $set) => $set('borrowitems', []))
+                    ->hidden(fn($record) => $record && in_array($record?->status_id, [9, 10, 11, 12]))
+                    ->action(fn(Set $set) => $set('borrowitems', []))
             ])->schema([
                 Placeholder::make('guidelines')
                     ->hiddenLabel()
@@ -543,7 +543,6 @@ class BorrowResource extends Resource
                         TextInput::make('q_request')
                             ->numeric()
                             ->minValue(0)
-                            ->maxValue(1000)
                             ->live(onBlur: true)
                             ->rules(function(Get $get, ?Model $record = null) {
                                 return function($attribute, $value, $fail) use($get, $record) {
@@ -587,7 +586,11 @@ class BorrowResource extends Resource
                             ->reactive()
                             ->disabled()
                             ->columnSpan(2)
-                    ])->extraItemActions([
+                    ])->deleteAction(
+                        fn(Action $action, ?BorrowHead $record) => $action
+                            ->requiresConfirmation()
+                            ->hidden(fn() => $record && in_array($record?->status_id, [9, 10, 11, 12]))
+                    )->extraItemActions([
                         Action::make('openProduct')
                             ->tooltip('Open product')
                             ->icon('heroicon-m-arrow-top-right-on-square')
@@ -736,7 +739,7 @@ class BorrowResource extends Resource
     public static function infolist(Infolist $infolist): Infolist {
         return $infolist->schema([
             InfolistSection::make(function(?BorrowHead $record) {
-                return $record ? new HtmlString('
+                return $record ? new HtmlString('<style>.gap-6 {gap: 1rem !important;}</style>
                     ใบยืมที่ <strong style="color:rgb(29, 78, 216);font-size:1.2rem;">'.$record?->id.' </strong>
                     : ข้อมูลผู้ยืม สถานะใบงาน
                 ') : 'New Borrow';
@@ -814,8 +817,16 @@ class BorrowResource extends Resource
                             ->formatStateUsing(fn($state): ?string => $state?->diffForHumans()),
                         TextEntry::make('status.name')
                             ->label('สถานะใบยืม')
-                            ->iconColor('primary')
                             ->size(TextEntry\TextEntrySize::Medium)
+                            ->iconColor(fn(string $state): string => match($state) {
+                                'ขอใหม่' => 'gray',
+                                'หน.กองอนุมัติ' => 'success',
+                                'หน.กองไม่อนุมัติ' => 'danger',
+                                'ส่งมอบของ' => 'warning',
+                                'รับของคืน' => 'warning',
+                                'จบงาน' => 'primary',
+                                'ยกเลิก' => 'danger'
+                            })
                             ->icon(fn(string $state): string => match($state) {
                                 'ขอใหม่' => 'heroicon-s-sparkles',
                                 'หน.กองอนุมัติ' => 'heroicon-s-check-badge',
@@ -840,6 +851,37 @@ class BorrowResource extends Resource
                         ->size(TextEntry\TextEntrySize::Medium)
                 ])
             ])->collapsible(),
+            InfolistActions::make([
+                InfolistAction::make('approve')
+                    ->label('อนุมัติ')
+                    ->action(function(BorrowHead $record): void {
+                        $record->status_id = 9;
+                        $record->approved_at = now();
+                        if(!$record->save()) {
+                            Notification::make()->danger()->title('Approve Failed')->body('การอนุมัติรายการขอใช้ผิดพลาด โปรดติดต่อเจ้าหน้าที่')->send();
+                        } else {
+                            Notification::make()->success()->title('Borrow Approved')->body('อนุมัติรายการขอใช้วิทยุสื่อสาร เรียบร้อยแล้ว')->send();
+                        }
+                    })
+                    ->visible(function($record) {
+                        return $record->status_id == 8 && $record?->qhead === Filament::auth()->user()->name;
+                    }),
+                InfolistAction::make('disapprove')
+                    ->label('ไม่อนุมัติ')
+                    ->color('danger')
+                    ->action(function(BorrowHead $record): void {
+                        $record->status_id = 10;
+                        $record->approved_at = now();
+                        if(!$record->save()) {
+                            Notification::make()->danger()->title('Approve Failed')->body('การอนุมัติรายการขอใช้ผิดพลาด โปรดติดต่อเจ้าหน้าที่')->send();
+                        } else {
+                            Notification::make()->danger()->title('Borrow Disapproved')->body('ไม่อนุมัติรายการขอใช้วิทยุสื่อสาร เรียบร้อยแล้ว')->send();
+                        }
+                    })
+                    ->visible(function($record) {
+                        return $record->status_id == 8 && $record?->qhead === Filament::auth()->user()->name;
+                    })
+            ])->columnSpanFull()->fullWidth(),
             InfolistSection::make(new HtmlString('<style>.bg-gray-s {background-color: #f9fafc;}</style>ข้อมูลอุปกรณ์ที่ยืม'))->schema([
                 RepeatableEntry::make('borrowitems')->hiddenLabel()->schema([
                     TextEntry::make('product.name')

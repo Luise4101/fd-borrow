@@ -71,33 +71,36 @@ class HRController extends Controller
         }
     }
 
-    public function fetchApproveBorrowData($aduser) {
+    public function fetchApproverData($aduser) {
         try {
             $token = session('hrapi_token');
             if(!$token) {
                 throw new \Exception('HR token is missing.');
             }
-            $responseApproveData = Http::withOptions(['verify' => false])->withToken($token)->get(env('API_HR_APPROVE'), [
+            $responsePersonData = Http::withOptions(['verify' => false])->withToken($token)->get(env('API_HR_PERSON'), [
                 'aduser' => $aduser
             ]);
-            if(!$responseApproveData->successful()) {
+            if(!$responsePersonData->successful()) {
                 throw new \Exception('Failed to retrieve approve data from HR.');
             }
-            $dataResponse = $responseApproveData->json();
-            $dataApprove = $dataResponse['Data'][0] ?? [];
-            if($dataApprove) {
-                session([
-                    'approve_each_head' => [
-                        'qhead' => $dataApprove['HeadLogin'] ?? null,
-                        'chead' => $dataApprove['HeadFullName'] ?? null,
-                        'email' => $dataApprove['HeadEmail'] ?? null
-                    ]
-                ]);
-                return session('approve_each_head');
+            $dataResponse = $responsePersonData->json();
+            $dataUser = $dataResponse['Data'][0] ?? [];
+            if($dataUser) {
+                return (object) [
+                    'fullname' => $dataUser['Fullname'] ?? null,
+                    'email' => $dataUser['Email'] ?? null,
+                    'mobile' => $dataUser['Mobile'] ?? null,
+                    'lineid' => $dataUser['Lineid'] ?? null,
+                ];
             }
         } catch(\Exception $e) {
             Log::error('Error fetching approve data: '.$e->getMessage());
-            return null;
+            return (object) [
+                'fullname' => null,
+                'email' => null,
+                'mobile' => null,
+                'lineid' => null
+            ];
         }
     }
 }
