@@ -10,7 +10,7 @@ return new class extends Migration
         Schema::create('return_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('return_head_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('borrow_item_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('borrow_item_id')->nullable();
             $table->unsignedInteger('sort')->default(0);
             $table->integer('q_return')->default(0);
             $table->integer('q_broken')->default(0);
