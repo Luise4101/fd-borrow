@@ -9,10 +9,7 @@ use App\Models\Asset\Status;
 use App\Models\Asset\Section;
 use App\Models\Main\BorrowInfo;
 use App\Models\Main\BorrowItem;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
-use App\Http\Controllers\BorrowController;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 

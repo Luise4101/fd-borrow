@@ -4,6 +4,7 @@ namespace App\Models\Inventory;
 
 use App\Models\Asset\Status;
 use App\Models\Main\BorrowItem;
+use App\Models\Main\ReturnItem;
 use App\Models\Inventory\Product;
 use App\Models\Inventory\AdjustItem;
 use App\Models\Inventory\RepairItem;
@@ -31,5 +32,8 @@ class Serial extends Model
     }
     public function borrowitems(): BelongsToMany {
         return $this->belongsToMany(BorrowItem::class, 'borrowitem_serials');
+    }
+    public function returnItems(): BelongsToMany {
+        return $this->belongsToMany(ReturnItem::class, 'returnitem_serials')->withPivot('status_id');
     }
 }
