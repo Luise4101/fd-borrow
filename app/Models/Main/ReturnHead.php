@@ -31,4 +31,11 @@ class ReturnHead extends Model
     public function returnitems(): HasMany {
         return $this->hasMany(ReturnItem::class, 'return_head_id');
     }
+
+    public function getDisplayUsernameAttribute() {
+        if($this->user_id) {
+            return $this->user ? $this->user->name : null;
+        }
+        return $this->user_fullname;
+    }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Main;
 
-use App\Models\User;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Forms\Form;
@@ -422,17 +421,17 @@ class BorrowResource extends Resource
                 ->disabled()
                 ->columnSpan(2),
             TextInput::make('activity_name')
-                    ->hiddenLabel()
-                    ->prefix('ชื่อกิจกรรม')
-                    ->maxLength(200)
-                    ->required()
-                    ->columnSpan(3),
-                TextInput::make('activity_place')
-                    ->hiddenLabel()
-                    ->prefix('สถานที่ใช้งาน')
-                    ->maxLength(200)
-                    ->required()
-                    ->columnSpan(3),
+                ->hiddenLabel()
+                ->prefix('ชื่อกิจกรรม')
+                ->maxLength(200)
+                ->required()
+                ->columnSpan(3),
+            TextInput::make('activity_place')
+                ->hiddenLabel()
+                ->prefix('สถานที่ใช้งาน')
+                ->maxLength(200)
+                ->required()
+                ->columnSpan(3)
         ])->extraAttributes(['class' => 'bg-color'])->columns(6)->columnSpan(4)->compact();
     }
 

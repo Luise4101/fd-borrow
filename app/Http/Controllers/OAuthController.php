@@ -11,7 +11,11 @@ use Laravel\Socialite\Facades\Socialite;
 class OAuthController extends Controller
 {
     public function authorizeCall() {
-        return Socialite::driver('laravelpassport')->redirect();
+        if(Filament::auth()->check()) {
+            return redirect('/admin');
+        } else {
+            return Socialite::driver('laravelpassport')->redirect();
+        }
     }
 
     public function callback() {

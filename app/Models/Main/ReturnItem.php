@@ -5,6 +5,7 @@ namespace App\Models\Main;
 use App\Models\Main\BorrowItem;
 use App\Models\Main\ReturnHead;
 use App\Models\Inventory\Serial;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\EloquentSortable\SortableTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -34,5 +35,14 @@ class ReturnItem extends Model
     }
     public function serials(): BelongsToMany {
         return $this->belongsToMany(Serial::class, 'returnitem_serials')->withPivot('status_id')->withTimestamps();
+    }
+    public function returnedSerials(): BelongsToMany {
+        return $this->serials()->wherePivot('status_id', 21);
+    }
+    public function brokenSerials(): BelongsToMany {
+        return $this->serials()->wherePivot('status_id', 22);
+    }
+    public function missingSerials(): BelongsToMany {
+        return $this->serials()->wherePivot('status_id', 23);
     }
 }

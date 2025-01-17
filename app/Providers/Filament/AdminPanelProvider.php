@@ -12,6 +12,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Navigation\NavigationBuilder;
 use App\Filament\Resources\Asset\BrandResource;
 use App\Filament\Resources\Main\BorrowResource;
+use App\Filament\Resources\Main\ReturnResource;
 use Illuminate\Session\Middleware\StartSession;
 use App\Filament\Resources\Account\RoleResource;
 use App\Filament\Resources\Account\UserResource;
@@ -115,7 +116,8 @@ class AdminPanelProvider extends PanelProvider
                     NavigationGroup::make('4.การยืมคืนอุปกรณ์')
                         ->items([
                             ...BorrowResource::getNavigationItems(),
-                            ...BorrowManageResource::getNavigationItems()
+                            ...BorrowManageResource::getNavigationItems(),
+                            ...ReturnResource::getNavigationItems()
                         ])
                 ]);
             })
