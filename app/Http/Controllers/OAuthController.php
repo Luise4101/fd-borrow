@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\HRController;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -35,6 +36,7 @@ class OAuthController extends Controller
             Filament::auth()->login($user);
             return redirect('/admin');
         } catch(\Exception $e) {
+            Log::error('OAuth Error: ' . $e->getMessage());
             abort(500, 'An unexpected error occurred: '.$e->getMessage());
         }
     }
