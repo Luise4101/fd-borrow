@@ -36,8 +36,8 @@ class OAuthController extends Controller
             Filament::auth()->login($user);
             return redirect('/admin');
         } catch(\Exception $e) {
-            Log::error('OAuth Error: ' . $e->getMessage());
-            abort(500, 'An unexpected error occurred: '.$e->getMessage());
+            Log::error('OAuth Error '.$e->getMessage());
+            abort(500, 'An unexpected error occurred '.$e->getMessage());
         }
     }
 

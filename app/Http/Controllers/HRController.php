@@ -23,12 +23,14 @@ class HRController extends Controller
                 session(['hrapi_token' => $token]);
             }
             if ($aduser) {
-                $responsePersonData = Http::withOptions(['verify' => false])->withToken($token)->get(env('API_HR_PERSON'), [
-                    'aduser' => $aduser
-                ]);
+                $responsePersonData = Http::withOptions(['verify' => false])->withToken($token)
+                    ->get(env('API_HR_PERSON'), ['aduser' => $aduser]);
                 if ($responsePersonData->successful()) {
                     $dataResponse = $responsePersonData->json();
                     $dataUser = $dataResponse['Data'][0] ?? [];
+                    if (!isset($dataUser['Aduser']) || empty($dataUser['Aduser'])) {
+                        throw new \Exception('Invalid user data received from HR API.');
+                    }
                     session(['user_data' => [
                         'aduser' => $dataUser['Aduser'] ?? null,
                         'email' => $dataUser['Email'] ?? null,
@@ -45,9 +47,8 @@ class HRController extends Controller
                 } else {
                     throw new \Exception('Failed to retrieve person data from HR.');
                 }
-                $responseApproveData = Http::withOptions(['verify' => false])->withToken($token)->get(env('API_HR_APPROVE'), [
-                    'aduser' => $aduser
-                ]);
+                $responseApproveData = Http::withOptions(['verify' => false])->withToken($token)
+                    ->get(env('API_HR_APPROVE'), ['aduser' => $aduser]);
                 if ($responseApproveData->successful()) {
                     $dataResponse = $responseApproveData->json();
                     $dataApprove = $dataResponse['Data'][0] ?? [];
